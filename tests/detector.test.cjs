@@ -149,3 +149,43 @@ test('retains nested indentation in the case preview', () => {
   const [range] = detect("it.each([\n        {\n            input: { id: 1 },\n        },\n    ])('nested %j', input => {\n  validate(input);\n});");
   assert.equal(range.each.casesDisplay, "[\n  {\n    input: { id: 1 },\n  },\n]");
 });
+
+for (const [name, source] of [
+  ['typed function', 'export async function load<T>(id: string): Promise<T> {\n  return fetchValue(id);\n}'],
+  ['arrow function', 'const convert = (value: Input): Output => {\n  return transform(value);\n};'],
+  ['named function expression', 'const convert = function(value: Input): Output {\n  return transform(value);\n};'],
+  ['class method', 'public async load<T>(id: string): Promise<T> {\n  return this.find(id);\n}'],
+  ['object method', 'load(id: string): Result {\n  return find(id);\n}'],
+  ['constructor', 'constructor(private readonly api: Api) {\n  initialize(api);\n}'],
+  ['getter', 'get value(): string {\n  return this.current;\n}'],
+  ['class arrow property', 'private handler = (value: Input): Output => {\n  return transform(value);\n};'],
+]) {
+  test(`folds a ${name} body without hiding its signature`, () => {
+    const [range] = detect(source);
+    assert.equal(range.kind, 'function');
+    assert.equal(range.header, 0);
+    assert.equal(range.start, 1);
+    assert.equal(range.end, 2);
+    assert.equal(range.description, source.split('\n')[0]);
+  });
+}
+
+test('keeps JSDoc, multiline arguments, return types and interfaces outside folded bodies', () => {
+  const lines = ['interface Input { id: string }', '/**', ' * Loads the selected record.', ' * @param input Record identifier.', ' */',
+    'export function load(', '  input: Input,', '): Promise<Result> {', '  return fetchValue(input);', '}'];
+  const [range] = detect(lines.join('\n'));
+  assert.equal(range.kind, 'function');
+  assert.equal(range.header, 5);
+  assert.equal(range.start, 8);
+  assert.deepEqual(lines.slice(range.start, range.end), ['  return fetchValue(input);']);
+});
+
+test('interfaces and function overload declarations remain visible', () => {
+  assert.equal(detect('interface Api {\n  load(id: string): Promise<Result>;\n}').length, 0);
+  assert.equal(detect('function load(id: string): Result;').length, 0);
+});
+
+test('incomplete functions and calls are not treated as foldable bodies', () => {
+  assert.equal(detect('function load() {\n  run();').length, 0);
+  assert.equal(detect('load(() => {\n  run();\n});').length, 0);
+});

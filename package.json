@@ -1,8 +1,8 @@
 {
   "name": "test-fold",
-  "version": "0.6.12",
+  "version": "0.8.21",
   "private": true,
-  "description": "Local tests for the Test Fold Chrome extension",
+  "description": "Local tests for the Github Fold Chrome extension",
   "scripts": {
     "test": "node --test tests/*.test.cjs",
     "test:watch": "node --test --watch tests/*.test.cjs"

@@ -61,7 +61,7 @@ class Element {
   }
 }
 let fixtureDocument;
-function fixture(source = null) {
+function fixture(source = null, preferences = {}) {
   const body = new Element('body'), file = new Element('div'); file.className = 'file'; body.append(file);
   const lines = ["it('first', () => {", '  first();', '});', '', "it('second', () => {", '  second();', '});'];
   const rows = (source ? source.split('\n') : lines).map((text, index) => {
@@ -83,7 +83,7 @@ function fixture(source = null) {
     getComputedStyle: () => ({overflowY: 'visible'}),
     setTimeout: () => 0, clearTimeout() {},
     MutationObserver: class {disconnect() {} observe() {}},
-    chrome: {storage: {local: {get: (defaults, fn) => fn(defaults)}, onChanged: {addListener() {}}},
+    chrome: {storage: {local: {get: (defaults, fn) => fn({...defaults, ...preferences})}, onChanged: {addListener() {}}},
       runtime: {onMessage: {addListener: fn => {receive = fn;}}}},
   });
   for (const name of ['vendor/parser.js', 'detector.js', 'policy.js', 'viewport.js']) vm.runInContext(readFileSync(resolve(__dirname, '..', name), 'utf8'), context);
@@ -185,4 +185,20 @@ test('multiple cases offer Expand test while ordinary tests and hooks show body 
     const ordinary = fixture(`${declaration}\n  initialize();\n  verify();\n});`);
     assert.equal(ordinary.controls()[0].textContent, '▸ 2 lines');
   }
+});
+
+
+test('function folding keeps JSDoc and typed arguments visible and expands only the body', () => {
+  const source = '/** Load a record. */\nfunction load(\n  id: string,\n): Result {\n  return find(id);\n}';
+  const f = fixture(source, {foldFunctions: true});
+  assert.equal(f.controls().length, 1);
+  assert.equal(f.controls()[0].textContent, '▸ 1 line');
+  for (const index of [0, 1, 2, 3, 5]) assert.equal(f.rows[index].classList.contains('tf-row-hidden'), false);
+  assert.equal(f.rows[4].classList.contains('tf-row-hidden'), true);
+  f.click(f.controls()[0]);
+  assert.equal(f.controls()[0].textContent, '▾ Collapse function');
+  assert.equal(f.rows[4].classList.contains('tf-row-hidden'), false);
+  const off = fixture(source, {foldFunctions: false});
+  assert.equal(off.controls().length, 0);
+  assert(off.rows.every(row => !row.classList.contains('tf-row-hidden')));
 });

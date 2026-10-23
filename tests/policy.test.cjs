@@ -34,3 +34,8 @@ test('enabled categories start collapsed and can show the full implementation', 
   assert.equal(policy({kind: 'test', each: {}}, {}).expanded, false);
   assert.equal(policy({kind: 'test', each: {}}, {}, true).compact, false);
 });
+
+test('function folding is controlled separately from tests and hooks', () => {
+  assert.equal(policy({kind: 'function'}, {foldFunctions: true, foldTests: false}).active, true);
+  assert.equal(policy({kind: 'function'}, {foldFunctions: false}).active, false);
+});

@@ -5,7 +5,7 @@
   // is persisted in Chrome storage. Map values are true when a test is expanded.
   const states = new Map();
   const categories = new Map();
-  const defaults = {foldTests: true, foldHooks: true, foldCases: true};
+  const defaults = {foldTests: true, foldHooks: true, foldCases: true, foldFunctions: false};
   // Settings enable folding per category; reenabled categories start collapsed.
   function updateSettings(values) {
     values = {...values};
@@ -33,7 +33,7 @@
   }
   // Use consistent action labels for ordinary and parameterized blocks.
   function foldLabel(range, expanded) {
-    if (expanded) return range.kind === 'hook' ? '▾ Collapse hook' : '▾ Collapse test';
+    if (expanded) return range.kind === 'function' ? '▾ Collapse function' : range.kind === 'hook' ? '▾ Collapse hook' : '▾ Collapse test';
     if (range.each && (range.each.count === null || range.each.count > 1)) return '▸ Expand test';
     const count = range.end - range.start;
     return `▸ ${count} ${count === 1 ? 'line' : 'lines'}`;
@@ -144,7 +144,7 @@
             const occurrence = occurrences.get(range.description) || 0;
             occurrences.set(range.description, occurrence + 1);
             const key = `${path}:${range.description}:${occurrence}`;
-            const category = range.kind === 'hook' ? 'foldHooks' : 'foldTests';
+            const category = range.kind === 'function' ? 'foldFunctions' : range.kind === 'hook' ? 'foldHooks' : 'foldTests';
             categories.set(key, category);
             if (!states.has(key)) states.set(key, false);
             if (range.each) {
@@ -169,7 +169,7 @@
               b.dataset.key = key;
               if (range.each && policy.cases) {
                 // Only parameterized summaries have a persistent header.
-                // Ordinary tests and hooks retain their original inline layout.
+                // Ordinary tests and hooks show their control above the source.
                 const casesKey = `${key}:cases`;
                 if (range.each && !states.has(casesKey)) states.set(casesKey, false);
                 const casesExpanded = !policy.cases || states.get(casesKey);

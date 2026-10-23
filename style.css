@@ -24,8 +24,8 @@
 .tf-cases-reveal.tf-cases-open { display: block; }
 .tf-cases-clip { min-width: 0; overflow: hidden; }
 
-/* Expanded source starts on a new line beneath its collapse control. */
-.tf-fold:not(.tf-cases)[aria-expanded="true"] { display: block; margin-bottom: 8px; }
+/* Source starts below its disclosure control in both collapsed and expanded states. */
+.tf-fold:not(.tf-cases) { display: block; margin-bottom: 8px; }
 
 /* Keep the case control visible but unavailable while full source is expanded. */
 .tf-cases-reserved { opacity: .45; cursor: not-allowed; }

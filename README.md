@@ -1,4 +1,4 @@
-# Test Fold for GitHub
+# Github Fold
 
 A local Chrome extension that folds complete JavaScript and TypeScript test bodies in GitHub pull request diffs. The test declaration stays visible; click its arrow to expand the original code.
 
@@ -10,7 +10,7 @@ A local Chrome extension that folds complete JavaScript and TypeScript test bodi
 4. Click **Load unpacked** and select this folder (the one containing `manifest.json`).
 5. Refresh a GitHub PR's **Files changed** page.
 
-Click the **Test Fold** icon in Chrome’s toolbar to open its popup. Use **Enable test folding** and the single **Expand tests / Collapse tests** button. The button expands/collapses hooks along with tests. It offers collapse when all detected tests and hooks are expanded, and expand otherwise. Use the visible **Settings → Enable folding for** controls to enable folding for tests, hooks and test cases. Turning **Tests** off also turns **Test cases** off and disables that checkbox. Turning **Tests** back on makes the checkbox available again; test cases stay off until selected. Turning a category off keeps its code visible and removes its inline folding controls. With **Test cases** off, the original `.each(...)` declaration stays visible, and the callback body can still be folded. All categories start enabled; newly enabled categories start collapsed. Preferences are saved and apply to open tabs and newly loaded blocks. Individual fold controls and the bulk toggle can still override the current view. Click outside the popup to close it. No floating bar covers the PR. The on/off preference is saved locally and synchronized across open GitHub tabs. Individual choices are kept while this page remains open and reset when switching PR routes or refreshing.
+Click the **Github Fold** icon in Chrome’s toolbar to open its popup. Use **On/off** and the single **Expand tests / Collapse tests** button. The button expands/collapses hooks along with tests. It offers collapse when all detected tests and hooks are expanded, and expand otherwise. Use the visible **Settings → Enable folding for** controls to enable folding for tests, hooks and test cases. Turning **Tests** off also turns **Test cases** off and disables that checkbox. Turning **Tests** back on makes the checkbox available again; test cases stay off until selected. Turning a category off keeps its code visible and removes its inline folding controls. With **Test cases** off, the original `.each(...)` declaration stays visible, and the callback body can still be folded. All categories start enabled; newly enabled categories start collapsed. Preferences are saved and apply to open tabs and newly loaded blocks. Individual fold controls and the bulk toggle can still override the current view. Click outside the popup to close it. No floating bar covers the PR. The on/off preference is saved locally and synchronized across open GitHub tabs. Individual choices are kept while this page remains open and reset when switching PR routes or refreshing.
 
 ## Supported behavior
 
@@ -67,3 +67,26 @@ Individual toggles reuse parsed diff ranges and update the clicked test’s cont
 The local suite includes DOM-fixture regression tests for individual/bulk toggles and parameterized cases, plus scroll-anchor tests for window and nested-pane scrolling. Browser scroll limits can prevent exact position preservation near the end of a document; live GitHub layout behavior should still be checked in Chrome.
 
 Only parameterized `.each` tests use stable summary headers. Ordinary tests and hooks use inline controls beside their original declarations; their button elements are retained while toggling. For parameterized tests, case inputs appear below both controls so opening cases does not move the implementation button.
+
+
+## Functions and methods
+
+Enable **Functions and methods** in the popup to fold JavaScript/TypeScript function bodies. This option starts off and is saved independently of test/hook settings. Named functions, exported/async functions, function expressions, block arrow functions, class/object methods, constructors, getters/setters and arrow class properties are supported when their complete body is present in the loaded diff.
+
+JSDoc and decorators remain visible above the declaration. Names, parameters, generics and return types stay visible, including multiline signatures. Interfaces, type declarations and overload signatures remain untouched. Collapsed bodies show **X lines**; expanded bodies show **Collapse function**. The bulk popup action also includes enabled function folds. Incomplete bodies and expression-only arrows stay visible.
+
+## Sidebar file tags
+
+GitHub's PR file tree shows badges immediately beside filenames. Tests are yellow; Wiring, Interfaces and Generated use light backgrounds. Other tags include Infra, Dependencies, Migrations, Validation, Config, Automation, Docs, Assets and UI. API, Logic and Data tags are omitted.
+
+Rules live in `file-tags.js` and use filename/path conventions. Generated may accompany a primary tag. Unknown files stay untagged. Wiring currently identifies conventional `index.js`/`index.ts` barrels and module registration filenames by name; it does not inspect their contents. GitHub's React sidebar is supported; folder roll-ups and repository-specific overrides are not included.
+
+The Interfaces tag covers `*.interface.ts`, `*.interfaces.ts`, `*.types.ts`, `*.d.ts`, `*.dto.ts`, and files in `types/`, `interfaces/`, `dto/` or `dtos/` directories.
+
+Config covers `config.ts`, `configs.ts`, `*.config.ts`, `.env`, `.env.*` and `*.env`. ZIP files are not classified as Assets based on their extension. Files in `yarn/.cache/` receive only Generated. Files in `.yarn/cache/` use the normal filename rules; ZIP files there remain untagged unless another rule matches.
+
+The PR sidebar starts `.yarn/cache/` and `yarn/.cache/` folders collapsed. You can expand them normally; the extension only collapses each folder once per PR per page load, independently of the File tags setting.
+
+Explicit Config filenames take priority over general directory tags, while test files retain Tests.
+
+The On/off switch controls all extension features: folding, file tags and automatic cache-folder collapsing. Individual feature preferences are retained while off.

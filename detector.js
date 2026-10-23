@@ -114,6 +114,61 @@
     }
     return ranges;
   }
+  // Parse complete named functions and class/object-style methods separately.
+  // Class wrapping lets a diff fragment contain a method without its class header.
+  // JSDoc, decorators, interfaces, overloads and signatures lie outside the body.
+  function functionRanges(lines, existing) {
+    const result = [];
+    const candidate = /^\s*(?:(?:export|default|public|private|protected|static|async|readonly|override|abstract|declare|get|set)\s+)*(?:function\b|(?:const|let|var)\s+[$\w]+|#?[$\w]+\s*(?:<[^;=]*>)?\s*\(|[$\w]+\s*(?::[^=]+)?=)/;
+    const blocked = /^(?:if|for|while|switch|catch|with|return|throw|new)$/;
+    function bodyNode(statement) {
+      if (!statement) return null;
+      if (['ExportNamedDeclaration', 'ExportDefaultDeclaration'].includes(statement.type)) return bodyNode(statement.declaration);
+      if (statement.type === 'VariableDeclaration' && statement.declarations.length === 1) return bodyNode(statement.declarations[0].init);
+      if (['ClassProperty', 'ClassPrivateProperty'].includes(statement.type)) return bodyNode(statement.value);
+      if (['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression', 'ClassMethod', 'ClassPrivateMethod'].includes(statement.type) && statement.body?.type === 'BlockStatement') return statement;
+      return null;
+    }
+    for (let i = 0; i < lines.length; i++) {
+      if (existing.some(r => i >= r.header && i < r.closingEnd)) continue;
+      if (!candidate.test(lines[i].text)) continue;
+      const word = lines[i].text.trim().match(/^[$\w]+/)?.[0];
+      if (blocked.test(word || '')) continue;
+      let source = '';
+      for (let j = i; j < Math.min(lines.length, i + 1500); j++) {
+        if (j > i && lines[j].number !== lines[j - 1].number + 1) break;
+        source += lines[j].text + '\n';
+        let found = null, offset = 0, completeNonFunction = false;
+        for (const wrapped of [false, true]) {
+          try {
+            const ast = TestFoldParser.parse(wrapped ? `class __TestFold__ extends Object {\n${source}\n}` : source,
+              {sourceType: 'unambiguous', plugins: ['typescript', 'jsx'], errorRecovery: true});
+            const statements = wrapped ? ast.program.body[0].body.body : ast.program.body;
+            if (!wrapped && (statements.length > 1 || source.trimEnd().endsWith(';'))) completeNonFunction = true;
+            if (statements.length !== 1) continue;
+            found = bodyNode(statements[0]); offset = wrapped ? 1 : 0;
+            if (found) break;
+          } catch (_) { /* Incomplete declarations stay visible. */ }
+        }
+        if (!found) {
+          if (completeNonFunction) break;
+          continue;
+        }
+        const start = i + found.body.loc.start.line - offset;
+        const end = i + found.body.loc.end.line - offset - 1;
+        if (end > start) result.push({kind: 'function', header: i, start, end,
+          closingEnd: j + 1, title: lines[i].text.trim(),
+          description: source.split('\n').slice(0, found.body.loc.start.line - offset).join('\n').trim()});
+        i = j; break;
+      }
+    }
+    return result;
+  }
+  const detectTests = detect;
+  globalThis.TestFoldDetect = lines => {
+    const tests = detectTests(lines);
+    return [...tests, ...functionRanges(lines, tests)].sort((a, b) => a.header - b.header);
+  };
   // Manifest script order makes this function available to content.js.
-  globalThis.TestFoldDetect = detect;
+
 })();

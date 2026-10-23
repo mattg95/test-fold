@@ -3,22 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Test Fold</title>
+  <title>Github Fold</title>
   <link rel="stylesheet" href="popup.css">
   <script src="popup.js" defer></script>
 </head>
 <body>
-  <h1>Test Fold</h1>
-  <label class="toggle"><span>Enable test folding</span><input id="enabled" type="checkbox" role="switch"></label>
+  <h1>Github Fold</h1>
+  <label class="toggle"><span>On/off</span><input id="enabled" type="checkbox" role="switch"></label>
   <div class="actions">
-    <button id="fold-toggle" title="Expand or collapse all detected tests and hooks" disabled>Expand tests</button>
+    <button id="fold-toggle" title="Expand or collapse all detected tests and hooks" disabled>Expand</button>
   </div>
-  <section class="settings" aria-labelledby="settings-heading">
+  <section id="settings-panel" class="settings" aria-labelledby="settings-heading" hidden>
     <h2 id="settings-heading">Settings</h2>
     <p>Enable folding for</p>
     <label class="toggle"><span>Tests</span><input id="foldTests" type="checkbox"></label>
     <label class="toggle"><span>Hooks</span><input id="foldHooks" type="checkbox"></label>
     <label class="toggle"><span>Test cases</span><input id="foldCases" type="checkbox"></label>
+    <label class="toggle"><span>Functions and methods</span><input id="foldFunctions" type="checkbox"></label>
+    <p id="tags-heading">Tags</p>
+    <label class="toggle"><span>File tags</span><input id="fileTags" type="checkbox"></label>
   </section>
   <p id="status" role="status">Checking this tab…</p>
 </body>

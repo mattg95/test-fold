@@ -8,7 +8,7 @@ const source = readFileSync(resolve(__dirname, '..', 'popup.js'), 'utf8');
 // Minimal browser boundary: actual popup event handlers run unchanged. Chrome
 // storage, messaging and DOM elements are fakes, so no browser/install is needed.
 async function openPopup({page = {}, missingReceiver = false, noTab = false} = {}) {
-  const elements = Object.fromEntries(['enabled', 'fold-toggle', 'status', 'foldTests', 'foldHooks', 'foldCases'].map(id => [id, {
+  const elements = Object.fromEntries(['enabled', 'fold-toggle', 'status', 'foldTests', 'foldHooks', 'foldCases', 'foldFunctions', 'fileTags'].map(id => [id, {
     checked: false, disabled: false, textContent: '',
     handlers: {}, addEventListener(event, handler) { this.handlers[event] = handler; },
   }]));
@@ -119,4 +119,24 @@ test('disabling tests switches off and disables test cases', async () => {
   await elements.foldTests.handlers.change();
   assert.equal(elements.foldCases.disabled, false);
   assert.equal(elements.foldCases.checked, false);
+});
+
+
+test('function folding has an independent saved popup setting', async () => {
+  const {elements, writes, messages} = await openPopup();
+  assert.equal(elements.foldFunctions.checked, false);
+  elements.foldFunctions.checked = true;
+  await elements.foldFunctions.handlers.change();
+  assert.deepEqual(writes.at(-1), {foldFunctions: true});
+  assert.deepEqual(messages.at(-1).settings, {foldFunctions: true});
+});
+
+
+test('file tags can be switched off independently and the preference is saved', async () => {
+  const {elements, writes} = await openPopup();
+  assert.equal(elements.fileTags.checked, true);
+  elements.fileTags.checked = false;
+  await elements.fileTags.handlers.change();
+  assert.deepEqual(writes.at(-1), {fileTags: false});
+  assert.equal(elements.enabled.checked, true);
 });

@@ -1,0 +1,18 @@
+/* Small named badges beside filenames; colours work independently of GitHub's theme. */
+.tf-tagged-filename { display: flex !important; flex-direction: row !important; align-items: center; min-width: 0; }
+.tf-tagged-filename > a { order: 0; min-width: 0; }
+.tf-file-tags { order: 1; flex-shrink: 0; display: inline-flex; gap: 4px; margin-inline-start: 7px; vertical-align: middle; }
+.tf-file-tag { display: inline-block; padding: 1px 5px; border-radius: 4px; font: 10px/1.5 system-ui,sans-serif; font-weight: 600; white-space: nowrap; color: #fff; }
+.tf-tag-tests { background: #f9d65c; color: #332900; }
+.tf-tag-wiring { background: #d6e4ee; color: #244457; }
+.tf-tag-interfaces { background: #e4d9fa; color: #503575; }
+.tf-tag-generated { background: #e2e5e9; color: #414b57; }
+.tf-tag-infra { background: #c95100; }
+.tf-tag-dependencies { background: #936000; }
+.tf-tag-migrations { background: #b71c1c; }
+.tf-tag-validation { background: #596a12; }
+.tf-tag-config { background: #3949ab; }
+.tf-tag-automation { background: #007580; }
+.tf-tag-docs { background: #8e24aa; }
+.tf-tag-assets { background: #a33c62; }
+.tf-tag-ui { background: #ba1769; }
