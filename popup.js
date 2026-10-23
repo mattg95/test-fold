@@ -1,14 +1,14 @@
 // Chrome creates this popup when the toolbar icon is clicked and closes it
 // when the user clicks elsewhere. Keep folding state in the content script.
 const toggle = document.getElementById('enabled');
-const expand = document.getElementById('expand');
-const collapse = document.getElementById('collapse');
+const foldToggle = document.getElementById('fold-toggle');
 const status = document.getElementById('status');
 let tabId;
 
 function render(page) {
   const available = page?.isPR && page.enabled && page.detected > 0;
-  expand.disabled = collapse.disabled = !available;
+  foldToggle.disabled = !available;
+  foldToggle.textContent = page?.allExpanded ? 'Collapse tests' : 'Expand tests';
   if (!page) status.textContent = 'Open a GitHub PR diff, or refresh the tab after updating Test Fold.';
   else if (!page.isPR) status.textContent = 'Open a PR’s Files changed tab to fold tests.';
   else if (!page.enabled) status.textContent = 'Test folding is off.';
@@ -30,8 +30,9 @@ toggle.addEventListener('change', async () => {
   await chrome.storage.local.set({enabled});
   render(await command('set-enabled', {enabled}));
 });
-expand.addEventListener('click', async () => render(await command('expand')));
-collapse.addEventListener('click', async () => render(await command('collapse')));
+// Decide the next action in the content script so reopening the popup or
+// individually expanding a test cannot leave the button out of sync.
+foldToggle.addEventListener('click', async () => render(await command('toggle')));
 
 (async () => {
   toggle.disabled = true;

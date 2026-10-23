@@ -10,7 +10,7 @@ A local Chrome extension that folds complete JavaScript and TypeScript test bodi
 4. Click **Load unpacked** and select this folder (the one containing `manifest.json`).
 5. Refresh a GitHub PR's **Files changed** page.
 
-Click the **Test Fold** icon in Chrome’s toolbar to open its popup. Use **Enable test folding**, **Expand tests**, or **Collapse tests**. Click outside the popup to close it. No floating bar covers the PR. The on/off preference is saved locally and synchronized across open GitHub tabs. Individual choices are kept while this page remains open and reset when switching PR routes or refreshing.
+Click the **Test Fold** icon in Chrome’s toolbar to open its popup. Use **Enable test folding** and the single **Expand tests / Collapse tests** button. The button offers collapse when all detected tests are expanded, and expand otherwise. Click outside the popup to close it. No floating bar covers the PR. The on/off preference is saved locally and synchronized across open GitHub tabs. Individual choices are kept while this page remains open and reset when switching PR routes or refreshing.
 
 ## Supported behavior
 
@@ -40,3 +40,21 @@ The only extension API permission is `storage`. Code remains in your browser. No
 ## Remove
 
 Remove the extension at `chrome://extensions` and refresh the PR page to restore GitHub's original view.
+
+## Run tests locally
+
+Requires Node.js 20 or newer. From this folder, run:
+
+```sh
+npm test
+```
+
+No `npm install` or extension build step is required. To rerun tests automatically when files change:
+
+```sh
+npm run test:watch
+```
+
+The suite uses Node’s built-in test runner. `tests/detector.test.cjs` runs the real bundled parser and detector against test declarations, modifiers, TypeScript/JSX, multiline headers and missing diff context. `tests/popup.test.cjs` runs the real popup event handlers with fake DOM elements and Chrome APIs, checking the single expand/collapse button, saved on/off preference and unavailable-page states.
+
+These are local unit tests. They do not launch Chrome or verify GitHub’s live diff markup; check that separately in the installed extension after changing `content.js` selectors or folding behavior.

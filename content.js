@@ -18,7 +18,10 @@
     return b;
   }
   function pageStatus() {
-    return {enabled, detected, isPR: /\/pull\/\d+\/(?:files|changes)(?:\/|$)/.test(location.pathname)};
+    // Mixed states offer Expand tests; only a fully expanded diff offers Collapse.
+    const controls = [...document.querySelectorAll('.tf-fold')];
+    const allExpanded = controls.length > 0 && controls.every(b => b.getAttribute('aria-expanded') === 'true');
+    return {enabled, detected, allExpanded, isPR: /\/pull\/\d+\/(?:files|changes)(?:\/|$)/.test(location.pathname)};
   }
   // Bulk actions affect tests discovered so far. Newly loaded tests start collapsed.
   function setAll(value) { for (const key of states.keys()) states.set(key, value); schedule(); }
@@ -153,10 +156,10 @@
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (message?.type !== 'test-fold') return;
     if (message.action === 'set-enabled') enabled = message.enabled === true;
-    if (message.action === 'expand' || message.action === 'collapse') {
+    if (message.action === 'expand' || message.action === 'collapse' || message.action === 'toggle') {
       // Scan first so a just-loaded file participates in the bulk action.
       apply();
-      setAll(message.action === 'expand');
+      setAll(message.action === 'toggle' ? !pageStatus().allExpanded : message.action === 'expand');
     }
     clearTimeout(timer);
     apply();
