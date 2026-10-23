@@ -1,0 +1,11 @@
+/* Floating controls use GitHub theme variables, with fallbacks. */
+#test-fold-toolbar { position: fixed; bottom: 18px; right: 18px; z-index: 100; display: flex; gap: 6px; padding: 8px; background: var(--bgColor-default, #fff); color: var(--fgColor-default, #1f2328); border: 1px solid var(--borderColor-default, #d1d9e0); border-radius: 8px; box-shadow: 0 3px 12px #0002; }
+/* Explicitly preserve the hidden attribute despite the flex layout above. */
+#test-fold-toolbar[hidden] { display: none; }
+/* Shared appearance for toolbar buttons and inline test disclosure buttons. */
+#test-fold-toolbar button, .tf-fold { cursor: pointer; color: inherit; background: var(--bgColor-muted, #f6f8fa); border: 1px solid var(--borderColor-default, #d1d9e0); border-radius: 5px; padding: 4px 8px; font: 12px system-ui; }
+.tf-fold { margin-right: 8px; color: var(--fgColor-accent, #0969da); }
+/* Keep split-diff cell alignment when only one side is folded. */
+.tf-hidden { visibility: hidden !important; }
+/* Collapse vertical space once the whole row can safely be hidden. */
+.tf-row-hidden { display: none !important; }

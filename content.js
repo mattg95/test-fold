@@ -1,0 +1,142 @@
+// Connect the test detector to GitHub’s loaded PR diff and manage folding controls.
+(() => {
+  let enabled = true, timer, applying = false;
+  // Expansion choices last for this page session; only the global on/off setting
+  // is persisted in Chrome storage. Map values are true when a test is expanded.
+  const states = new Map();
+  let route = '';
+  // Keep GitHub-specific markup selectors together. Line handling below expects
+  // table-based diffs; unsupported renderers are left untouched.
+  const fileSelector = '.file, [data-file-path], [data-testid="diff-file"]';
+  const codeSelector = '.blob-code, [data-testid="diff-line-code"]';
+  // Build the floating controls once, then reuse them after each rescan.
+  const toolbar = document.createElement('div');
+  toolbar.id = 'test-fold-toolbar';
+  toolbar.setAttribute('aria-label', 'Test Fold controls');
+  // Native buttons provide keyboard activation and accessible labels.
+  function button(label, action) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+    b.addEventListener('click', action); return b;
+  }
+  const toggle = button('Test Fold: on', () => {
+    enabled = !enabled; chrome.storage.local.set({enabled}); schedule();
+  });
+  toolbar.append(toggle, button('Expand tests', () => setAll(true)), button('Collapse tests', () => setAll(false)));
+  // Bulk actions affect tests discovered so far. Newly loaded tests start collapsed.
+  function setAll(value) { for (const key of states.keys()) states.set(key, value); schedule(); }
+  // Debounce bursts of GitHub DOM updates into one scan.
+  function schedule() { clearTimeout(timer); timer = setTimeout(apply, 180); }
+  // Undo our previous display changes before reading source text again.
+  // Original code nodes stay in place, preserving GitHub’s syntax highlighting.
+  function cleanup() {
+    document.querySelectorAll('.tf-fold').forEach(n => n.remove());
+    document.querySelectorAll('.tf-hidden, .tf-row-hidden').forEach(n => n.classList.remove('tf-hidden', 'tf-row-hidden'));
+  }
+  // Unified diffs have two line-number cells before one code cell. Split diffs
+  // put each side’s line number immediately before its corresponding code cell.
+  function lineNumber(cell, side) {
+    const row = cell.closest('tr');
+    if (!row) return null;
+    const nums = [...row.querySelectorAll('.blob-num')];
+    const split = row.querySelectorAll(codeSelector).length > 1;
+    const num = split ? cell.previousElementSibling : nums[side === 'old' ? 0 : nums.length - 1];
+    const n = num?.getAttribute('data-line-number');
+    return n && /^\d+$/.test(n) ? Number(n) : null;
+  }
+  function apply() {
+    if (applying) return;
+    // Disconnect while changing the DOM so our own buttons/classes do not
+    // trigger a continuous cycle of rescanning. The finally block reconnects it.
+    applying = true; observer.disconnect();
+    try {
+      // GitHub can navigate without reloading. Reset test choices on route changes.
+      if (route !== location.pathname) { states.clear(); route = location.pathname; }
+      cleanup();
+      const isPR = /\/pull\/\d+\/(?:files|changes)(?:\/|$)/.test(location.pathname);
+      toolbar.hidden = !isPR;
+      if (!toolbar.isConnected) document.body.append(toolbar);
+      toggle.textContent = `Test Fold: ${enabled ? 'on' : 'off'}`;
+      if (!enabled || !isPR) return;
+      // Process only outermost file containers to avoid scanning nested matches twice.
+      const files = [...document.querySelectorAll(fileSelector)].filter(f => !f.parentElement.closest(fileSelector));
+      let found = 0;
+      for (const file of files) {
+        const path = file.getAttribute('data-path') || file.getAttribute('data-file-path') || file.querySelector('[title]')?.getAttribute('title') || String(files.indexOf(file));
+        const cells = [...file.querySelectorAll(codeSelector)].filter(c => c.closest('tr'));
+        // A unified context cell belongs to both versions of the file. Record
+        // which sides use each cell and which sides want it hidden.
+        const present = new Map(), hidden = new Map();
+        // Reconstruct old and new source separately: parsing a mixture of deleted
+        // and added lines could invent invalid code or incorrect test boundaries.
+        for (const side of ['old', 'new']) {
+          const lines = [];
+          const occurrences = new Map();
+          for (const cell of cells) {
+            const row = cell.closest('tr');
+            const rowCells = [...row.querySelectorAll(codeSelector)];
+            const split = rowCells.length > 1;
+            const removed = cell.classList.contains('blob-code-deletion');
+            const added = cell.classList.contains('blob-code-addition');
+            if (split ? cell !== rowCells[side === 'old' ? 0 : rowCells.length - 1] : (side === 'old' ? added : removed)) continue;
+            const number = lineNumber(cell, side);
+            if (!number) continue;
+            const inner = cell.querySelector('.blob-code-inner') || cell;
+            // The old-side scan may already have inserted a button. Remove
+            // extension controls from the clone so they never become parser input.
+            const copy = inner.cloneNode(true);
+            copy.querySelectorAll('.tf-fold').forEach(n => n.remove());
+            lines.push({number, text: copy.textContent, cell, row, inner});
+            if (!present.has(cell)) present.set(cell, new Set());
+            present.get(cell).add(side);
+          }
+          for (const range of TestFoldDetect(lines)) {
+            const header = lines[range.header];
+            // Pair matching declarations across diff sides and distinguish
+            // repeated descriptions using their occurrence within this file/side.
+            const occurrence = occurrences.get(range.description) || 0;
+            occurrences.set(range.description, occurrence + 1);
+            const key = `${path}:${range.description}:${occurrence}`;
+            if (!states.has(key)) states.set(key, false);
+            const expanded = states.get(key);
+            const b = button(`${expanded ? '▾' : '▸'} ${expanded ? 'Collapse test' : `${range.end - range.start} lines`}`, () => {
+              states.set(key, !states.get(key)); schedule();
+            });
+            b.className = 'tf-fold'; b.setAttribute('aria-expanded', String(expanded));
+            b.title = range.description;
+            // Shared context headers need only one control for the same test.
+            if (![...header.inner.querySelectorAll('.tf-fold')].some(n => n.dataset.key === key)) {
+              b.dataset.key = key; header.inner.prepend(b); found++;
+            }
+            if (!expanded) for (let k = range.start; k < range.end; k++) {
+              const cell = lines[k].cell;
+              if (!hidden.has(cell)) hidden.set(cell, new Set());
+              hidden.get(cell).add(side);
+            }
+          }
+        }
+        // Hide shared cells only when every side that uses them is folded.
+        // This keeps an expanded side visible in a unified diff.
+        for (const [cell, sides] of present) {
+          if ([...sides].every(side => hidden.get(cell)?.has(side))) cell.classList.add('tf-hidden');
+        }
+        // Remove the row’s vertical space only when all its code is hidden or
+        // empty. Preserve rows containing review comments. In split view, a
+        // folded cell stays blank if its opposite cell still needs to be visible.
+        for (const row of file.querySelectorAll('tr')) {
+          const code = [...row.querySelectorAll(codeSelector)];
+          if (code.length && code.every(c => c.classList.contains('tf-hidden') || !c.textContent.trim()) && !row.querySelector('.review-comment, .js-inline-comments-container, [data-testid*="comment"]')) row.classList.add('tf-row-hidden');
+        }
+      }
+      toolbar.title = found ? `${found} test ranges detected` : 'No complete supported test blocks found in the loaded diff. Expand GitHub’s hidden context if the test is incomplete.';
+    } finally {
+      applying = false;
+      observer.observe(document.body, {childList: true, subtree: true});
+    }
+  }
+  // Watch lazy-loaded files/context and GitHub navigation. Load the saved
+  // preference before the initial scan to avoid briefly folding when disabled.
+  const observer = new MutationObserver(schedule);
+  chrome.storage.local.get({enabled: true}, value => { enabled = value.enabled; apply(); });
+  window.addEventListener('popstate', schedule);
+  document.addEventListener('turbo:load', schedule);
+})();
