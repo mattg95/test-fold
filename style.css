@@ -5,3 +5,11 @@
 .tf-hidden { visibility: hidden !important; }
 /* Collapse vertical space once the whole row can safely be hidden. */
 .tf-row-hidden { display: none !important; }
+
+/* Parameterized tests show their purpose before separately foldable sections. */
+.tf-each-ui { display: block; padding: 4px 0; white-space: normal; }
+.tf-each-title { display: block; margin-bottom: 6px; font-weight: 600; white-space: pre-wrap; }
+.tf-each-ui .tf-fold { display: block; margin: 4px 0; }
+/* Indent the implementation control beneath its parameterized case list. */
+.tf-each-ui .tf-fold:not(.tf-cases) { margin-inline-start: 16px; }
+.tf-each-source-hidden { display: none !important; }

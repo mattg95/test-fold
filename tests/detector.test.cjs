@@ -91,3 +91,41 @@ test('includes hooks and tests in one collection for bulk folding', () => {
   const ranges = detect("beforeEach(() => {\n  initialize();\n});\nit('works', () => {\n  run();\n});\nafterAll(() => {\n  cleanup();\n});");
   assert.deepEqual(ranges.map(range => range.kind), ['hook', 'test', 'hook']);
 });
+
+// Case counts come from syntax, and placeholders are removed only from the compact display.
+test('summarizes a multiline each table by description and case count', () => {
+  const [range] = detect("it.each([\n  { locationId: -1 },\n  { cursor: 'no' },\n])('rejects invalid query values: %j', async (input) => {\n  await validate(input);\n});");
+  assert.deepEqual(range.each, {title: 'rejects invalid query values', count: 2});
+  assert.equal(range.header, 0);
+  assert.equal(range.start, 4);
+  assert.equal(range.end, 5);
+});
+
+test('counts TypeScript constant arrays in parameterized tests', () => {
+  const [range] = detect("test.each(['start', 'end'] as const)('requires %s', field => {\n  validate(field);\n});");
+  assert.deepEqual(range.each, {title: 'requires', count: 2});
+});
+
+for (const table of ['cases', '[...cases]', '[makeCase()]']) {
+  test(`never evaluates ${table} to count cases`, () => {
+    const [range] = detect(`it.each(${table})('checks input', input => {\n  validate(input);\n});`);
+    assert.equal(range.each.count, table === '[makeCase()]' ? 1 : null);
+  });
+}
+
+test('ordinary tests do not get separate case sections', () => {
+  const [range] = detect("it('ordinary', () => {\n  run();\n});");
+  assert.equal(range.each, undefined);
+});
+
+
+test('removes runtime placeholders from summaries while preserving original code', () => {
+  const [range] = detect("it.each([1])('requires %s', input => {\n  validate(input);\n});");
+  assert.equal(range.each.title, 'requires');
+  assert.match(range.description, /requires %s/);
+});
+
+test('keeps literal percentages in parameterized descriptions', () => {
+  const [range] = detect("it.each([1])('supports 100%% coverage for %s', input => {\n  validate(input);\n});");
+  assert.equal(range.each.title, 'supports 100% coverage for');
+});

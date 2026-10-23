@@ -30,7 +30,9 @@
   // Undo our previous display changes before reading source text again.
   // Original code nodes stay in place, preserving GitHub’s syntax highlighting.
   function cleanup() {
-    document.querySelectorAll('.tf-fold').forEach(n => n.remove());
+    document.querySelectorAll('.tf-each-ui, .tf-fold').forEach(n => n.remove());
+    // Restore original syntax nodes before rescanning or turning folding off.
+    document.querySelectorAll('.tf-each-source').forEach(n => n.replaceWith(...n.childNodes));
     document.querySelectorAll('.tf-hidden, .tf-row-hidden').forEach(n => n.classList.remove('tf-hidden', 'tf-row-hidden'));
   }
   // Unified diffs have two line-number cells before one code cell. Split diffs
@@ -93,7 +95,7 @@
             // The old-side scan may already have inserted a button. Remove
             // extension controls from the clone so they never become parser input.
             const copy = inner.cloneNode(true);
-            copy.querySelectorAll('.tf-fold').forEach(n => n.remove());
+            copy.querySelectorAll('.tf-each-ui, .tf-fold').forEach(n => n.remove());
             lines.push({number, text: copy.textContent, cell, row, inner});
             if (!present.has(cell)) present.set(cell, new Set());
             present.get(cell).add(side);
@@ -114,7 +116,39 @@
             b.title = range.description;
             // Shared context headers need only one control for the same test.
             if (![...header.inner.querySelectorAll('.tf-fold')].some(n => n.dataset.key === key)) {
-              b.dataset.key = key; header.inner.prepend(b); found++;
+              b.dataset.key = key;
+              if (range.each) {
+                // Keep the original declaration in place, with a compact summary
+                // above it. Cases and callback body have independent saved states.
+                const casesKey = `${key}:cases`;
+                if (!states.has(casesKey)) states.set(casesKey, false);
+                const casesExpanded = states.get(casesKey);
+                let original = header.inner.querySelector('.tf-each-source');
+                if (!original) {
+                  original = document.createElement('span'); original.className = 'tf-each-source';
+                  original.append(...header.inner.childNodes); header.inner.append(original);
+                }
+                const ui = document.createElement('span'); ui.className = 'tf-each-ui';
+                const title = document.createElement('span'); title.className = 'tf-each-title';
+                title.textContent = range.each.title;
+                const caseLabel = range.each.count === null ? 'Test cases' : `${range.each.count} test ${range.each.count === 1 ? 'case' : 'cases'}`;
+                const casesButton = button(`${casesExpanded ? '▾' : '▸'} ${caseLabel}`, () => {
+                  states.set(casesKey, !states.get(casesKey)); schedule();
+                });
+                casesButton.className = 'tf-fold tf-cases';
+                casesButton.dataset.key = casesKey;
+                casesButton.setAttribute('aria-expanded', String(casesExpanded));
+                b.textContent = `${expanded ? '▾' : '▸'} ${expanded ? 'Collapse test' : 'Test implementation'}`;
+                ui.append(title, casesButton, b); header.inner.prepend(ui); found += 2;
+              } else { header.inner.prepend(b); found++; }
+            }
+            // Hide multiline .each input tables independently of implementation.
+            if (range.each && !states.get(`${key}:cases`)) {
+              for (let k = range.header + 1; k < range.start; k++) {
+                const cell = lines[k].cell;
+                if (!hidden.has(cell)) hidden.set(cell, new Set());
+                hidden.get(cell).add(side);
+              }
             }
             if (!expanded) for (let k = range.start; k < range.end; k++) {
               const cell = lines[k].cell;
@@ -125,6 +159,11 @@
         }
         // Hide shared cells only when every side that uses them is folded.
         // This keeps an expanded side visible in a unified diff.
+        // Shared unified headers stay readable if either side's cases are open.
+        for (const original of file.querySelectorAll('.tf-each-source')) {
+          const controls = [...original.parentElement.querySelectorAll('.tf-cases')];
+          original.classList.toggle('tf-each-source-hidden', controls.every(b => b.getAttribute('aria-expanded') === 'false'));
+        }
         for (const [cell, sides] of present) {
           if ([...sides].every(side => hidden.get(cell)?.has(side))) cell.classList.add('tf-hidden');
         }

@@ -29,7 +29,7 @@ This first version folds only complete tests present in loaded, contiguous diff 
 
 Supports classic `.blob-code` diffs and the React `/changes` viewer’s `.diff-text-cell` structure. Version 0.2.0 was verified in Chrome against a private PR: ten test controls were detected; toolbar-popup expansion, collapse and on/off controls worked. The floating bar was absent. Only complete tests currently present in the DOM are eligible; loading or scrolling to more code triggers a rescan. It does not replace GitHub's viewer or fetch full file source.
 
-Folded split-view cells can leave blank space where the opposite side has visible changes. Review comments remain on screen, but their associated code may need manual expansion. Parameterized tests fold their shared callback, rather than expanding into individual generated cases.
+Folded split-view cells can leave blank space where the opposite side has visible changes. Review comments remain on screen, but their associated code may need manual expansion. Parameterized `.each([...])` tests show the description first, with separate **N test cases** and **Test implementation** controls. Both start collapsed and participate in the popup bulk toggle. Expanding cases reveals the original declaration and inputs; expanding implementation reveals the callback body. Literal arrays provide the case count; variable tables and spreads show **Test cases** without guessing a count. Runtime-generated cases are not evaluated.
 
 ## Files and privacy
 

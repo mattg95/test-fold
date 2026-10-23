@@ -18,6 +18,28 @@
     return callee.type === 'MemberExpression' && !callee.computed &&
       ['test', 'it'].includes(root(callee.object)) && hooks.has(callee.property.name);
   }
+  // Extract .each metadata from syntax only; never evaluate test data or titles.
+  function eachDetails(call, source) {
+    const factory = call.callee;
+    const method = factory.type === 'CallExpression' ? factory.callee : null;
+    if (method?.type !== 'MemberExpression' || method.computed || method.property.name !== 'each') return null;
+    const titleNode = call.arguments[0];
+    if (!titleNode) return null;
+    let data = factory.arguments[0];
+    while (data && ['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression'].includes(data.type)) data = data.expression;
+    // Spread expressions and variable tables have an unknown runtime case count.
+    const count = data?.type === 'ArrayExpression' && data.elements.every(n => n && n.type !== 'SpreadElement') ? data.elements.length : null;
+    const rawTitle = titleNode.type === 'StringLiteral' ? titleNode.value : source.slice(titleNode.start, titleNode.end);
+    // Formatting placeholders describe runtime case values, which are hidden in
+    // the compact view. Preserve escaped %% and the original source declaration.
+    let removedPlaceholder = false;
+    const title = rawTitle.replace(/%%|%[sdifjoO#$]/g, token => {
+      if (token === '%%') return '%';
+      removedPlaceholder = true;
+      return '';
+    }).replace(/[ \t]{2,}/g, ' ').trim();
+    return {title: removedPlaceholder ? title.replace(/:\s*$/, '').trim() : title, count};
+  }
   function detect(lines) {
     const ranges = [];
     for (let i = 0; i < lines.length; i++) {
@@ -55,7 +77,12 @@
         const start = i + callback.body.loc.start.line;
         const end = i + callback.body.loc.end.line - 1;
         // Hide only whole interior lines. Keep header and closing syntax intact.
-        if (end > start) ranges.push({kind, header: i, start, end, description: source.split('\n').slice(0, callback.body.loc.start.line).join('\n').trim()});
+        if (end > start) {
+          const range = {kind, header: i, start, end, description: source.split('\n').slice(0, callback.body.loc.start.line).join('\n').trim()};
+          const each = kind === 'test' ? eachDetails(call, source) : null;
+          if (each) range.each = each;
+          ranges.push(range);
+        }
         // Skip the recognized block so nested calls are not treated as separate tests.
         i = j;
         break;
