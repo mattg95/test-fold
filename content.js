@@ -6,9 +6,9 @@
   const states = new Map();
   let route = '';
   // Keep GitHub-specific markup selectors together. Line handling below expects
-  // table-based diffs; unsupported renderers are left untouched.
-  const fileSelector = '.file, [data-file-path], [data-testid="diff-file"]';
-  const codeSelector = '.blob-code, [data-testid="diff-line-code"]';
+  // classic and React table-based diffs; unsupported renderers are left untouched.
+  const fileSelector = '.file, [data-file-path], [data-testid="diff-file"], table[data-diff-anchor]';
+  const codeSelector = '.blob-code, [data-testid="diff-line-code"], td.diff-text-cell[data-line-number]';
   // Build the floating controls once, then reuse them after each rescan.
   const toolbar = document.createElement('div');
   toolbar.id = 'test-fold-toolbar';
@@ -21,7 +21,11 @@
   const toggle = button('Test Fold: on', () => {
     enabled = !enabled; chrome.storage.local.set({enabled}); schedule();
   });
-  toolbar.append(toggle, button('Expand tests', () => setAll(true)), button('Collapse tests', () => setAll(false)));
+  const status = document.createElement('span');
+  status.setAttribute('role', 'status');
+  const expandAll = button('Expand tests', () => setAll(true));
+  const collapseAll = button('Collapse tests', () => setAll(false));
+  toolbar.append(toggle, expandAll, collapseAll, status);
   // Bulk actions affect tests discovered so far. Newly loaded tests start collapsed.
   function setAll(value) { for (const key of states.keys()) states.set(key, value); schedule(); }
   // Debounce bursts of GitHub DOM updates into one scan.
@@ -37,6 +41,16 @@
   function lineNumber(cell, side) {
     const row = cell.closest('tr');
     if (!row) return null;
+    // React diffs put both source coordinates in the line key, even when
+    // a unified context cell displays only the right-hand line number.
+    const key = cell.getAttribute('data-diff-line-key');
+    if (key) {
+      const match = key.match(/-l:(null|\d+)-r:(null|\d+)(?:$|[^0-9])/);
+      if (match) {
+        const value = match[side === 'old' ? 1 : 2];
+        return value === 'null' ? null : Number(value);
+      }
+    }
     const nums = [...row.querySelectorAll('.blob-num')];
     const split = row.querySelectorAll(codeSelector).length > 1;
     const num = split ? cell.previousElementSibling : nums[side === 'old' ? 0 : nums.length - 1];
@@ -56,12 +70,14 @@
       toolbar.hidden = !isPR;
       if (!toolbar.isConnected) document.body.append(toolbar);
       toggle.textContent = `Test Fold: ${enabled ? 'on' : 'off'}`;
+      expandAll.disabled = collapseAll.disabled = !enabled;
+      status.textContent = enabled ? 'Scanning…' : 'Folding is off';
       if (!enabled || !isPR) return;
       // Process only outermost file containers to avoid scanning nested matches twice.
       const files = [...document.querySelectorAll(fileSelector)].filter(f => !f.parentElement.closest(fileSelector));
       let found = 0;
       for (const file of files) {
-        const path = file.getAttribute('data-path') || file.getAttribute('data-file-path') || file.querySelector('[title]')?.getAttribute('title') || String(files.indexOf(file));
+        const path = file.getAttribute('aria-label') || file.getAttribute('data-tagsearch-path') || file.getAttribute('data-path') || file.getAttribute('data-file-path') || file.querySelector('[title]')?.getAttribute('title') || String(files.indexOf(file));
         const cells = [...file.querySelectorAll(codeSelector)].filter(c => c.closest('tr'));
         // A unified context cell belongs to both versions of the file. Record
         // which sides use each cell and which sides want it hidden.
@@ -75,12 +91,12 @@
             const row = cell.closest('tr');
             const rowCells = [...row.querySelectorAll(codeSelector)];
             const split = rowCells.length > 1;
-            const removed = cell.classList.contains('blob-code-deletion');
-            const added = cell.classList.contains('blob-code-addition');
+            const removed = (cell.classList.contains('blob-code-deletion') || !!cell.querySelector('.diff-text.deletion'));
+            const added = (cell.classList.contains('blob-code-addition') || !!cell.querySelector('.diff-text.addition'));
             if (split ? cell !== rowCells[side === 'old' ? 0 : rowCells.length - 1] : (side === 'old' ? added : removed)) continue;
             const number = lineNumber(cell, side);
             if (!number) continue;
-            const inner = cell.querySelector('.blob-code-inner') || cell;
+            const inner = cell.querySelector('.blob-code-inner, .diff-text-inner') || cell;
             // The old-side scan may already have inserted a button. Remove
             // extension controls from the clone so they never become parser input.
             const copy = inner.cloneNode(true);
@@ -127,6 +143,8 @@
           if (code.length && code.every(c => c.classList.contains('tf-hidden') || !c.textContent.trim()) && !row.querySelector('.review-comment, .js-inline-comments-container, [data-testid*="comment"]')) row.classList.add('tf-row-hidden');
         }
       }
+      status.textContent = found ? `${found} test controls` : 'No complete tests detected';
+      expandAll.disabled = collapseAll.disabled = found === 0;
       toolbar.title = found ? `${found} test ranges detected` : 'No complete supported test blocks found in the loaded diff. Expand GitHub’s hidden context if the test is incomplete.';
     } finally {
       applying = false;

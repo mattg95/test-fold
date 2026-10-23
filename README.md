@@ -18,7 +18,7 @@ The controls appear in the bottom right. Use **Expand tests**, **Collapse tests*
 - Parses JavaScript, TypeScript and JSX using a bundled Babel parser.
 - Leaves suites, setup hooks and helper functions visible.
 - Retains multiline test declarations and closing syntax.
-- Handles added/deleted lines and traditional table-based unified/split GitHub diffs.
+- Handles added/deleted lines in classic and React table-based GitHub diffs.
 - Leaves comment rows in place and keeps partial or unparseable tests expanded.
 - Automatically rescans when GitHub loads more diff content.
 - Makes no network requests and does not mark files as viewed or change the PR.
@@ -27,7 +27,7 @@ The controls appear in the bottom right. Use **Expand tests**, **Collapse tests*
 
 This first version folds only complete tests present in loaded, contiguous diff lines. Expand GitHub's hidden context to make more tests eligible. A test whose opening and closing lines are absent stays expanded. Single-line tests and expression callbacks stay visible.
 
-GitHub has multiple diff renderers. This version targets table-based diffs (`.blob-code` rows), whose markup was checked on a public Playwright PR; a different or virtualized renderer may show no fold controls. It does not replace GitHub's viewer or fetch full file source. Installing and running the extension in Chrome has not yet been verified because a Chrome connection was unavailable.
+Supports classic `.blob-code` diffs and the React `/changes` viewer’s `.diff-text-cell` structure. Version 0.1.1 was verified in Chrome against a private PR: three tests were detected, individual expansion worked, and bulk expansion/collapse worked. Only complete tests currently present in the DOM are eligible; loading or scrolling to more code triggers a rescan. It does not replace GitHub's viewer or fetch full file source.
 
 Folded split-view cells can leave blank space where the opposite side has visible changes. Review comments remain on screen, but their associated code may need manual expansion. Parameterized tests fold their shared callback, rather than expanding into individual generated cases.
 
