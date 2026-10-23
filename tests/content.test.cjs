@@ -138,11 +138,23 @@ test('parameterized cases and full implementation toggle without reparsing', () 
   f.click(f.controls().find(b => !b.classList.contains('tf-cases')));
   assert.equal(f.controls().length, 2);
   assert.equal(f.controls().find(b => !b.classList.contains('tf-cases')).textContent, '▾ Collapse test');
+  const casesControl = f.controls().find(b => b.classList.contains('tf-cases'));
+  assert.equal(casesControl.classList.contains('tf-cases-reserved'), true);
+  assert.equal(casesControl.getAttribute('aria-disabled'), 'true');
+  assert.equal(casesControl.tabIndex, -1);
+  assert.equal(casesControl.disabled, true);
+  const reveal = header.querySelector('.tf-cases-reveal');
+  assert.equal(reveal.classList.contains('tf-cases-open'), false);
+  assert.equal(reveal.getAttribute('aria-hidden'), 'true');
+  assert.equal(reveal.isConnected, true); // Retained to preserve the stable layout.
   assert.equal(f.rows[3].classList.contains('tf-row-hidden'), false);
   assert.equal(f.document.querySelectorAll('.tf-each-ui')[0], header);
   assert.equal(header.querySelector('.tf-each-title').textContent, description);
   f.click(f.controls().find(b => !b.classList.contains('tf-cases')));
   assert.equal(f.controls().length, 2);
+  assert.equal(casesControl.classList.contains('tf-cases-reserved'), false);
+  assert.equal(casesControl.disabled, false);
+  assert.equal(casesControl.tabIndex, 0);
   assert(f.controls().every(b => b.getAttribute('aria-expanded') === 'false'));
   assert.equal(f.calls(), calls);
 });

@@ -33,7 +33,7 @@
   }
   function pageStatus() {
     // Mixed states offer Expand tests; only a fully expanded diff offers Collapse.
-    const controls = [...document.querySelectorAll('.tf-fold')];
+    const controls = [...document.querySelectorAll('.tf-fold')].filter(b => !b.disabled && b.getAttribute('aria-hidden') !== 'true');
     const allExpanded = controls.length > 0 && controls.every(b => b.getAttribute('aria-expanded') === 'true');
     return {enabled, detected, allExpanded, isPR: /\/pull\/\d+\/(?:files|changes)(?:\/|$)/.test(location.pathname)};
   }
@@ -150,8 +150,9 @@
             const b = button(`${expanded ? '▾' : '▸'} ${expanded ? (range.kind === 'hook' ? 'Collapse hook' : 'Collapse test') : `${range.end - range.start} lines`}`, () => {
               const nextExpanded = !states.get(key);
               states.set(key, nextExpanded);
-              // Collapsing the full test also resets its independently opened cases.
-              if (range.each && !nextExpanded) states.set(`${key}:cases`, false);
+              // Switching implementation state closes the separate case preview.
+              // Keep the existing case-list container and update its visibility.
+              if (range.each) states.set(`${key}:cases`, false);
               apply({keys: new Set([key]), anchor: b});
             });
             b.className = 'tf-fold'; b.setAttribute('aria-expanded', String(expanded));
@@ -186,8 +187,7 @@
                 // wrapper or callback. textContent keeps source text inert.
                 const casesCode = document.createElement('pre'); casesCode.className = 'tf-each-cases';
                 casesCode.textContent = range.each?.casesDisplay || range.each?.casesSource || '';
-                // Animate an intrinsic-height grid, keeping the stable controls
-                // above it stationary. No guessed maximum height is required.
+                // Keep the case list below its stable controls; visibility changes instantly.
                 const reveal = document.createElement('div'); reveal.className = 'tf-cases-reveal';
                 const clip = document.createElement('div'); clip.className = 'tf-cases-clip';
                 clip.append(casesCode); reveal.append(clip);
@@ -195,8 +195,10 @@
                 reveal.setAttribute('aria-hidden', String(!casesExpanded));
                 reveal.inert = !casesExpanded;
                 ui.append(title);
-                if (policy.cases) { ui.append(casesButton); found++; }
-                if (policy.implementation) { ui.append(b); found++; }
+                const actions = document.createElement('span'); actions.className = 'tf-each-actions';
+                if (policy.cases) { actions.append(casesButton); found++; }
+                if (policy.implementation) { actions.append(b); found++; }
+                ui.append(actions);
                 if (policy.cases) ui.append(reveal);
                 header.inner.prepend(ui);
               } else { header.inner.prepend(b); found++; }
@@ -213,9 +215,14 @@
               const open = states.get(`${key}:cases`);
               if (liveCases) {
                 liveCases.setAttribute('aria-expanded', String(open));
+                // Keep the cases control visible but disabled while full source is open.
+                liveCases.classList.toggle('tf-cases-reserved', expanded);
+                liveCases.setAttribute('aria-disabled', String(expanded));
+                liveCases.tabIndex = expanded ? -1 : 0;
+                liveCases.disabled = expanded;
                 const label = range.each.count === null ? 'Test cases' : `${range.each.count} test ${range.each.count === 1 ? 'case' : 'cases'}`;
                 liveCases.textContent = `${open ? '▾' : '▸'} ${label}`;
-                const reveal = liveCases.parentElement.querySelector('.tf-cases-reveal');
+                const reveal = header.inner.querySelector('.tf-cases-reveal');
                 reveal.classList.toggle('tf-cases-open', !!open);
                 reveal.setAttribute('aria-hidden', String(!open));
                 reveal.inert = !open;
@@ -256,16 +263,18 @@
           const keepEachDeclaration = !defaults.foldCases && original.textContent.includes('.each');
           original.classList.toggle('tf-each-source-hidden', !expandedControl && !keepEachDeclaration);
         }
-        for (const [cell, sides] of present) {
-          cell.classList.toggle('tf-hidden', [...sides].every(side => hidden.get(cell)?.has(side)));
-        }
-        // Remove the row’s vertical space only when all its code is hidden or
-        // empty. Preserve rows containing review comments. In split view, a
-        // folded cell stays blank if its opposite cell still needs to be visible.
-        for (const row of file.querySelectorAll('tr')) {
+        function updateRow(row) {
           const code = [...row.querySelectorAll(codeSelector)];
           row.classList.toggle('tf-row-hidden', !!(code.length && code.every(c => c.classList.contains('tf-hidden') || !c.textContent.trim()) && !row.querySelector('.review-comment, .js-inline-comments-container, [data-testid*="comment"]')));
         }
+        for (const [cell, sides] of present) {
+          const hide = [...sides].every(side => hidden.get(cell)?.has(side));
+          // Reveal the row before animating a previously hidden code cell.
+          if (!hide) cell.closest('tr').classList.remove('tf-row-hidden');
+          cell.classList.toggle('tf-hidden', hide);
+          updateRow(cell.closest('tr'));
+        }
+        for (const row of file.querySelectorAll('tr')) updateRow(row);
       }
       detected = document.querySelectorAll('.tf-fold').length;
       const controls = [...document.querySelectorAll('.tf-fold')];

@@ -23,6 +23,7 @@ globalThis.TestFoldViewport = {
     // test, so bulk folding retains a recognizable test rather than a hidden line.
     let best = null, distance = Infinity;
     for (const control of controls) {
+      if (control.disabled || control.getAttribute?.('aria-hidden') === 'true') continue;
       const rect = control.getBoundingClientRect();
       if (!rect.width || !rect.height || rect.bottom <= 0 || rect.top >= innerHeight) continue;
       if (Math.abs(rect.top) < distance) { best = control; distance = Math.abs(rect.top); }
