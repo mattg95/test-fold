@@ -1,6 +1,6 @@
 /* Inline test disclosure buttons inherit GitHub’s current theme. */
-.tf-fold { cursor: pointer; color: inherit; background: var(--bgColor-muted, #f6f8fa); border: 1px solid var(--borderColor-default, #d1d9e0); border-radius: 5px; padding: 4px 8px; font: 12px system-ui; }
-.tf-fold { margin-right: 8px; color: var(--fgColor-accent, #0969da); }
+.tf-fold { text-align: left; cursor: pointer; color: inherit; background: var(--bgColor-muted, #f6f8fa); border: 1px solid var(--borderColor-default, #d1d9e0); border-radius: 5px; padding: 4px 2px; font: 12px system-ui; }
+.tf-fold { margin-right: 4px; color: var(--fgColor-accent, #0969da); }
 /* Keep split-diff cell alignment when only one side is folded. */
 .tf-hidden { visibility: hidden !important; }
 /* Collapse vertical space once the whole row can safely be hidden. */
@@ -16,7 +16,7 @@
 .tf-each-source-hidden { display: none !important; }
 
 /* Cases expand as the input expression only, separate from implementation. */
-.tf-each-cases { margin: 8px 0 12px 16px; padding: 8px; white-space: pre; overflow-x: auto; tab-size: 2; font: 12px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--bgColor-muted, #f6f8fa); color: var(--fgColor-default, #1f2328); }
+.tf-each-cases { margin: 8px 0 12px 16px; padding: 8px; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; min-width: 0; max-width: 100%; box-sizing: border-box; tab-size: 2; font: 12px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--bgColor-muted, #f6f8fa); color: var(--fgColor-default, #1f2328); }
 .tf-each-cases[hidden] { display: none; }
 
 /* Show and hide the case list immediately, without opacity or size transitions. */
@@ -24,8 +24,14 @@
 .tf-cases-reveal.tf-cases-open { display: block; }
 .tf-cases-clip { min-width: 0; overflow: hidden; }
 
-/* Source starts below its disclosure control in both collapsed and expanded states. */
-.tf-fold:not(.tf-cases) { display: block; margin-bottom: 8px; }
+/* Each button reserves only the larger of its own two labels. */
+.tf-fold:not(.tf-cases) { display: inline-block; white-space: nowrap; }
+.tf-fold[data-fold-width]::before, .tf-fold[data-fold-width]::after { display: block; height: 0; overflow: hidden; visibility: hidden; }
+.tf-fold[data-fold-width]::before { content: attr(data-fold-collapsed-width); }
+.tf-fold[data-fold-width]::after { content: attr(data-fold-width); }
 
 /* Keep the case control visible but unavailable while full source is expanded. */
 .tf-cases-reserved { opacity: .45; cursor: not-allowed; }
+
+/* Compact hook controls while reserving their Collapse label width. */
+.tf-fold[data-fold-kind="hook"] { padding-inline: 2px; margin-right: 4px; }

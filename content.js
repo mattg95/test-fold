@@ -33,8 +33,10 @@
   }
   // Use consistent action labels for ordinary and parameterized blocks.
   function foldLabel(range, expanded) {
-    if (expanded) return range.kind === 'function' ? '▾ Collapse function' : range.kind === 'hook' ? '▾ Collapse hook' : '▾ Collapse test';
-    if (range.each && (range.each.count === null || range.each.count > 1)) return '▸ Expand test';
+    const multipleCases = range.each && (range.each.count === null || range.each.count > 1);
+    if (expanded) return multipleCases ? '▾ Collapse test' : '▾ Collapse';
+    if (range.kind === 'hook') return '▸ Expand';
+    if (multipleCases) return '▸ Expand test';
     const count = range.end - range.start;
     return `▸ ${count} ${count === 1 ? 'line' : 'lines'}`;
   }
@@ -163,13 +165,17 @@
               apply({keys: new Set([key]), anchor: b});
             });
             b.className = 'tf-fold'; b.setAttribute('aria-expanded', String(expanded));
+            // Reserve the expanded label's width even while showing a line count.
+            b.setAttribute('data-fold-width', foldLabel(range, true));
+            b.setAttribute('data-fold-collapsed-width', foldLabel(range, false));
+            b.setAttribute('data-fold-kind', range.kind || 'test');
             b.title = range.description;
             // Shared context headers need only one control for the same test.
             if (![...header.inner.querySelectorAll('.tf-fold')].some(n => n.dataset.key === key)) {
               b.dataset.key = key;
               if (range.each && policy.cases) {
                 // Only parameterized summaries have a persistent header.
-                // Ordinary tests and hooks show their control above the source.
+                // Ordinary tests and hooks keep a fixed-width control inline with the source.
                 const casesKey = `${key}:cases`;
                 if (range.each && !states.has(casesKey)) states.set(casesKey, false);
                 const casesExpanded = !policy.cases || states.get(casesKey);
@@ -208,7 +214,22 @@
                 ui.append(actions);
                 if (policy.cases) ui.append(reveal);
                 header.inner.prepend(ui);
-              } else { header.inner.prepend(b); found++; }
+              } else {
+                // Preserve source indentation before the control, rather than
+                // between the control and declaration. Syntax spans may nest it.
+                const walker = document.createTreeWalker(header.inner, 4);
+                let text, inserted = false;
+                while ((text = walker.nextNode())) {
+                  const offset = text.textContent.search(/\S/);
+                  if (offset < 0) continue;
+                  const start = offset ? text.splitText(offset) : text;
+                  start.parentNode.insertBefore(b, start);
+                  inserted = true;
+                  break;
+                }
+                if (!inserted) header.inner.prepend(b);
+                found++;
+              }
             }
             // Preserve header/button identity and focus during ordinary toggles.
             // Settings or GitHub source changes still trigger a full rebuild.
