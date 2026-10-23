@@ -45,7 +45,7 @@ test('offers Expand tests when the diff is collapsed or mixed', async () => {
   assert.equal(elements['fold-toggle'].textContent, 'Expand tests');
   assert.equal(elements['fold-toggle'].disabled, false);
   assert.equal(messages[0].action, 'status');
-  assert.match(elements.status.textContent, /3 test controls/);
+  assert.match(elements.status.textContent, /3 test and hook controls/);
 });
 
 test('toggles one button from expand to collapse and back', async () => {
@@ -79,7 +79,7 @@ test('on/off toggle persists the preference and updates the active page', async 
 
 for (const [name, options, expected] of [
   ['disabled extension', {page: {enabled: false}}, /off/],
-  ['empty diff', {page: {detected: 0}}, /No complete tests/],
+  ['empty diff', {page: {detected: 0}}, /No complete tests or hooks/],
   ['non-PR tab', {page: {isPR: false}}, /Files changed/],
   ['missing content script', {missingReceiver: true}, /refresh the tab/],
   ['no active tab', {noTab: true}, /Open a GitHub PR diff/],

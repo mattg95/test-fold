@@ -12,7 +12,7 @@ function render(page) {
   if (!page) status.textContent = 'Open a GitHub PR diff, or refresh the tab after updating Test Fold.';
   else if (!page.isPR) status.textContent = 'Open a PR’s Files changed tab to fold tests.';
   else if (!page.enabled) status.textContent = 'Test folding is off.';
-  else status.textContent = page.detected ? `${page.detected} test controls available in this diff.` : 'No complete tests found in the loaded diff.';
+  else status.textContent = page.detected ? `${page.detected} test and hook controls available in this diff.` : 'No complete tests or hooks found in the loaded diff.';
 }
 
 async function command(action, extra = {}) {

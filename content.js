@@ -107,7 +107,7 @@
             const key = `${path}:${range.description}:${occurrence}`;
             if (!states.has(key)) states.set(key, false);
             const expanded = states.get(key);
-            const b = button(`${expanded ? '▾' : '▸'} ${expanded ? 'Collapse test' : `${range.end - range.start} lines`}`, () => {
+            const b = button(`${expanded ? '▾' : '▸'} ${expanded ? (range.kind === 'hook' ? 'Collapse hook' : 'Collapse test') : `${range.end - range.start} lines`}`, () => {
               states.set(key, !states.get(key)); schedule();
             });
             b.className = 'tf-fold'; b.setAttribute('aria-expanded', String(expanded));

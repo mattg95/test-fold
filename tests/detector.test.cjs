@@ -37,7 +37,6 @@ test('folds only the body of a multiline declaration, preserving its closing lin
 
 for (const [name, source] of [
   ['suite', "test.describe('suite', () => {\n  setup();\n});"],
-  ['setup hook', 'test.beforeEach(() => {\n  setup();\n});'],
   ['incomplete test', "test('partial', () => {\n  run();"],
   ['expression callback', "test('inline', () => run());"],
   ['single-line test', "test('inline', () => { run(); });"],
@@ -60,4 +59,35 @@ test('finds adjacent tests without folding their separating lines', () => {
   assert.deepEqual(ranges.map(({header, start, end}) => ({header, start, end})), [
     {header: 0, start: 1, end: 2}, {header: 4, start: 5, end: 6},
   ]);
+});
+
+// Both global Jest/Vitest/Mocha hooks and Playwright's qualified hooks fold.
+for (const hook of ['beforeAll', 'afterAll', 'beforeEach', 'afterEach', 'before', 'after', 'setup', 'teardown', 'suiteSetup', 'suiteTeardown', 'test.beforeAll', 'test.afterAll', 'test.beforeEach', 'test.afterEach', 'it.beforeEach']) {
+  test(`folds ${hook} as a hook`, () => {
+    const source = `${hook}(async () => {\n  await initialize();\n  await cleanup();\n});`;
+    const [range] = detect(source);
+    assert.equal(range.kind, 'hook');
+    assert.equal(range.header, 0);
+    assert.deepEqual(source.split('\n').slice(range.start, range.end), ['  await initialize();', '  await cleanup();']);
+  });
+}
+
+test('detects a named multiline hook while keeping its declaration visible', () => {
+  const [range] = detect("test.beforeAll(\n  'initialize database',\n  async () => {\n    await initialize();\n  }\n);");
+  assert.equal(range.kind, 'hook');
+  assert.equal(range.start, 3);
+  assert.equal(range.end, 4);
+});
+
+test('keeps an incomplete hook visible', () => {
+  assert.equal(detect('afterAll(async () => {\n  await cleanup();').length, 0);
+});
+
+test('does not classify application lifecycle methods as test hooks', () => {
+  assert.equal(detect('database.beforeAll(() => {\n  initialize();\n});').length, 0);
+});
+
+test('includes hooks and tests in one collection for bulk folding', () => {
+  const ranges = detect("beforeEach(() => {\n  initialize();\n});\nit('works', () => {\n  run();\n});\nafterAll(() => {\n  cleanup();\n});");
+  assert.deepEqual(ranges.map(range => range.kind), ['hook', 'test', 'hook']);
 });

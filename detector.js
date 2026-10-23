@@ -1,4 +1,4 @@
-// Identify complete test callbacks without depending on GitHub’s page structure.
+// Identify complete test and lifecycle-hook callbacks without depending on GitHub’s page structure.
 // Input: source lines with original file line numbers. Output: foldable array ranges.
 (function () {
   // Follow chained calls such as test.only(...) and test.each(...)(...)
@@ -10,11 +10,19 @@
     if (node.type === 'CallExpression') return root(node.callee);
     return '';
   }
+  const hooks = new Set(['beforeAll', 'afterAll', 'beforeEach', 'afterEach', 'before', 'after', 'setup', 'teardown', 'suiteSetup', 'suiteTeardown']);
+  function isHook(callee) {
+    // Recognize imported/global hooks and framework hooks such as test.beforeAll.
+    // Other objects' similarly named methods are ordinary application code.
+    if (callee.type === 'Identifier') return hooks.has(callee.name);
+    return callee.type === 'MemberExpression' && !callee.computed &&
+      ['test', 'it'].includes(root(callee.object)) && hooks.has(callee.property.name);
+  }
   function detect(lines) {
     const ranges = [];
     for (let i = 0; i < lines.length; i++) {
-      // Quickly skip lines that cannot begin a supported test declaration.
-      if (!/^\s*(?:await\s+)?(?:test|it|fit|xit|xtest)\b/.test(lines[i].text)) continue;
+      // Quickly skip lines that cannot begin a supported test or hook declaration.
+      if (!/^\s*(?:await\s+)?(?:test|it|fit|xit|xtest|beforeAll|afterAll|beforeEach|afterEach|before|after|setup|teardown|suiteSetup|suiteTeardown)\b/.test(lines[i].text)) continue;
       // Add contiguous lines until Babel can parse a complete statement.
       // Stop at missing diff context; folding across a gap could hide unrelated code.
       // Cap the search to avoid spending too long on incomplete or unusually large tests.
@@ -35,9 +43,10 @@
         let call = statement?.expression;
         if (call?.type === 'AwaitExpression') call = call.argument;
         if (ast.program.body.length !== 1 || call?.type !== 'CallExpression') break;
-        if (!['test', 'it', 'fit', 'xit', 'xtest'].includes(root(call.callee))) break;
+        const kind = isHook(call.callee) ? 'hook' : 'test';
+        if (kind !== 'hook' && !['test', 'it', 'fit', 'xit', 'xtest'].includes(root(call.callee))) break;
         // Suites and framework configuration must stay visible.
-        if (/\.(?:describe|beforeEach|afterEach|beforeAll|afterAll|use|extend|step|skipIf|runIf)\b/.test(source.slice(0, call.arguments[0]?.start ?? 0))) break;
+        if (/\.(?:describe|use|extend|step|skipIf|runIf)\b/.test(source.slice(0, call.arguments[0]?.start ?? 0))) break;
         // Only callbacks with a brace-delimited body can have interior lines folded.
         const callback = call.arguments.find(n => ['ArrowFunctionExpression', 'FunctionExpression'].includes(n.type));
         if (!callback || callback.body.type !== 'BlockStatement') break;
@@ -46,8 +55,8 @@
         const start = i + callback.body.loc.start.line;
         const end = i + callback.body.loc.end.line - 1;
         // Hide only whole interior lines. Keep header and closing syntax intact.
-        if (end > start) ranges.push({header: i, start, end, description: source.split('\n').slice(0, callback.body.loc.start.line).join('\n').trim()});
-        // Skip the recognized test so nested calls are not treated as separate tests.
+        if (end > start) ranges.push({kind, header: i, start, end, description: source.split('\n').slice(0, callback.body.loc.start.line).join('\n').trim()});
+        // Skip the recognized block so nested calls are not treated as separate tests.
         i = j;
         break;
       }

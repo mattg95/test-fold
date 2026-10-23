@@ -10,13 +10,13 @@ A local Chrome extension that folds complete JavaScript and TypeScript test bodi
 4. Click **Load unpacked** and select this folder (the one containing `manifest.json`).
 5. Refresh a GitHub PR's **Files changed** page.
 
-Click the **Test Fold** icon in Chrome’s toolbar to open its popup. Use **Enable test folding** and the single **Expand tests / Collapse tests** button. The button offers collapse when all detected tests are expanded, and expand otherwise. Click outside the popup to close it. No floating bar covers the PR. The on/off preference is saved locally and synchronized across open GitHub tabs. Individual choices are kept while this page remains open and reset when switching PR routes or refreshing.
+Click the **Test Fold** icon in Chrome’s toolbar to open its popup. Use **Enable test folding** and the single **Expand tests / Collapse tests** button. The button expands/collapses hooks along with tests. It offers collapse when all detected tests and hooks are expanded, and expand otherwise. Click outside the popup to close it. No floating bar covers the PR. The on/off preference is saved locally and synchronized across open GitHub tabs. Individual choices are kept while this page remains open and reset when switching PR routes or refreshing.
 
 ## Supported behavior
 
 - Recognizes `test`, `it`, `fit`, `xit`, and `xtest`, including common `.only`, `.skip`, `.each` and `.todo` forms with block callbacks.
 - Parses JavaScript, TypeScript and JSX using a bundled Babel parser.
-- Leaves suites, setup hooks and helper functions visible.
+- Folds setup and teardown hooks by default (`beforeAll`, `afterAll`, `beforeEach`, `afterEach`, Mocha aliases and `test.*` forms). Expanded hooks show **Collapse hook**. Suites and helper functions stay visible.
 - Retains multiline test declarations and closing syntax.
 - Handles added/deleted lines in classic and React table-based GitHub diffs.
 - Leaves comment rows in place and keeps partial or unparseable tests expanded.
