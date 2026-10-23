@@ -31,6 +31,13 @@
     b.addEventListener('click', event => { event.stopPropagation(); action(); });
     return b;
   }
+  // Use consistent action labels for ordinary and parameterized blocks.
+  function foldLabel(range, expanded) {
+    if (expanded) return range.kind === 'hook' ? '▾ Collapse hook' : '▾ Collapse test';
+    if (range.each && (range.each.count === null || range.each.count > 1)) return '▸ Expand test';
+    const count = range.end - range.start;
+    return `▸ ${count} ${count === 1 ? 'line' : 'lines'}`;
+  }
   function pageStatus() {
     // Mixed states offer Expand tests; only a fully expanded diff offers Collapse.
     const controls = [...document.querySelectorAll('.tf-fold')].filter(b => !b.disabled && b.getAttribute('aria-hidden') !== 'true');
@@ -147,7 +154,7 @@
             const policy = TestFoldPolicy(range, defaults, states.get(key));
             if (!policy.active) continue;
             const expanded = policy.expanded;
-            const b = button(`${expanded ? '▾' : '▸'} ${expanded ? (range.kind === 'hook' ? 'Collapse hook' : 'Collapse test') : `${range.end - range.start} lines`}`, () => {
+            const b = button(foldLabel(range, expanded), () => {
               const nextExpanded = !states.get(key);
               states.set(key, nextExpanded);
               // Switching implementation state closes the separate case preview.
@@ -182,7 +189,7 @@
                 casesButton.className = 'tf-fold tf-cases';
                 casesButton.dataset.key = casesKey;
                 casesButton.setAttribute('aria-expanded', String(casesExpanded));
-                b.textContent = `${expanded ? '▾' : '▸'} ${range.kind === 'hook' ? (expanded ? 'Collapse hook' : 'Expand hook') : (expanded ? 'Collapse test' : 'Expand tests')}`;
+                b.textContent = foldLabel(range, expanded);
                 // Render only the parsed input expression, never the .each call
                 // wrapper or callback. textContent keeps source text inert.
                 const casesCode = document.createElement('pre'); casesCode.className = 'tf-each-cases';
@@ -208,7 +215,7 @@
             const liveButton = [...header.inner.querySelectorAll('.tf-fold')].find(n => n.dataset.key === key);
             if (liveButton) {
               liveButton.setAttribute('aria-expanded', String(expanded));
-              liveButton.textContent = `${expanded ? '▾' : '▸'} ${expanded ? (range.kind === 'hook' ? 'Collapse hook' : 'Collapse test') : (range.each && policy.cases ? 'Expand tests' : `${range.end - range.start} lines`)}`;
+              liveButton.textContent = foldLabel(range, expanded);
             }
             if (range.each && policy.cases) {
               const liveCases = [...header.inner.querySelectorAll('.tf-cases')].find(n => n.dataset.key === `${key}:cases`);

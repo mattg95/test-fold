@@ -128,6 +128,7 @@ test('parameterized cases and full implementation toggle without reparsing', () 
   const header = f.document.querySelectorAll('.tf-each-ui')[0];
   const description = header.querySelector('.tf-each-title').textContent;
   assert.equal(f.controls().length, 2);
+  assert.equal(f.controls().find(b => !b.classList.contains('tf-cases')).textContent, '▸ 1 line');
   assert.equal(header.querySelector('.tf-cases-reveal').getAttribute('aria-hidden'), 'true');
   assert.match(f.controls().find(b => b.classList.contains('tf-cases')).textContent, /^▸ 1 test case$/);
   f.click(f.controls().find(b => b.classList.contains('tf-cases')));
@@ -168,8 +169,20 @@ test('ordinary tests and hooks use inline controls without summary headers', () 
     assert.equal(f.document.querySelectorAll('.tf-each-source').length, 0);
     assert.equal(f.rows[2].classList.contains('tf-row-hidden'), false);
     const control = f.controls()[0];
+    assert.equal(control.textContent, '▸ 1 line');
     f.click(control);
+    assert.equal(control.textContent, name.startsWith('it') ? '▾ Collapse test' : '▾ Collapse hook');
     assert.equal(f.controls()[0], control);
     assert.equal(f.document.querySelectorAll('.tf-each-ui').length, 0);
+  }
+});
+
+
+test('multiple cases offer Expand test while ordinary tests and hooks show body counts', () => {
+  const f = fixture("it.each([1, 2])('checks %s', input => {\n  validate(input);\n  verify(input);\n});");
+  assert.equal(f.controls().find(b => !b.classList.contains('tf-cases')).textContent, '▸ Expand test');
+  for (const declaration of ["it('ordinary', () => {", 'beforeEach(() => {']) {
+    const ordinary = fixture(`${declaration}\n  initialize();\n  verify();\n});`);
+    assert.equal(ordinary.controls()[0].textContent, '▸ 2 lines');
   }
 });
