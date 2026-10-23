@@ -95,7 +95,7 @@ test('includes hooks and tests in one collection for bulk folding', () => {
 // Case counts come from syntax, and placeholders are removed only from the compact display.
 test('summarizes a multiline each table by description and case count', () => {
   const [range] = detect("it.each([\n  { locationId: -1 },\n  { cursor: 'no' },\n])('rejects invalid query values: %j', async (input) => {\n  await validate(input);\n});");
-  assert.deepEqual(range.each, {title: 'rejects invalid query values', count: 2, casesSource: "[\n  { locationId: -1 },\n  { cursor: 'no' },\n]"});
+  assert.deepEqual(range.each, {title: 'rejects invalid query values', count: 2, casesSource: "[\n  { locationId: -1 },\n  { cursor: 'no' },\n]", casesDisplay: "[\n  { locationId: -1 },\n  { cursor: 'no' },\n]"});
   assert.equal(range.header, 0);
   assert.equal(range.start, 4);
   assert.equal(range.end, 5);
@@ -103,7 +103,7 @@ test('summarizes a multiline each table by description and case count', () => {
 
 test('counts TypeScript constant arrays in parameterized tests', () => {
   const [range] = detect("test.each(['start', 'end'] as const)('requires %s', field => {\n  validate(field);\n});");
-  assert.deepEqual(range.each, {title: 'requires', count: 2, casesSource: "['start', 'end']"});
+  assert.deepEqual(range.each, {title: 'requires', count: 2, casesSource: "['start', 'end']", casesDisplay: "['start', 'end']"});
 });
 
 for (const table of ['cases', '[...cases]', '[makeCase()]']) {
@@ -136,4 +136,16 @@ test('expanded cases contain only the input array, excluding call and implementa
   assert.equal(range.each.casesSource, "[\n  { limit: 0 },\n  { cursor: 'no' },\n]");
   assert.doesNotMatch(range.each.casesSource, /it\.each|rejects|async|request/);
   assert.equal(range.closingEnd, 6);
+});
+
+
+test('formats tab-indented cases consistently without changing raw source', () => {
+  const [range] = detect("it.each([\n\t\t{ locationId: -1 },\n\t\t{ cursor: 'no' },\n\t])('rejects %j', input => {\n  validate(input);\n});");
+  assert.equal(range.each.casesDisplay, "[\n  { locationId: -1 },\n  { cursor: 'no' },\n]");
+  assert.match(range.each.casesSource, /\t\t/);
+});
+
+test('retains nested indentation in the case preview', () => {
+  const [range] = detect("it.each([\n        {\n            input: { id: 1 },\n        },\n    ])('nested %j', input => {\n  validate(input);\n});");
+  assert.equal(range.each.casesDisplay, "[\n  {\n    input: { id: 1 },\n  },\n]");
 });

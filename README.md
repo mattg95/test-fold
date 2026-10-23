@@ -10,7 +10,7 @@ A local Chrome extension that folds complete JavaScript and TypeScript test bodi
 4. Click **Load unpacked** and select this folder (the one containing `manifest.json`).
 5. Refresh a GitHub PR's **Files changed** page.
 
-Click the **Test Fold** icon in Chrome’s toolbar to open its popup. Use **Enable test folding** and the single **Expand tests / Collapse tests** button. The button expands/collapses hooks along with tests. It offers collapse when all detected tests and hooks are expanded, and expand otherwise. Click outside the popup to close it. No floating bar covers the PR. The on/off preference is saved locally and synchronized across open GitHub tabs. Individual choices are kept while this page remains open and reset when switching PR routes or refreshing.
+Click the **Test Fold** icon in Chrome’s toolbar to open its popup. Use **Enable test folding** and the single **Expand tests / Collapse tests** button. The button expands/collapses hooks along with tests. It offers collapse when all detected tests and hooks are expanded, and expand otherwise. Use the visible **Settings → Enable folding for** controls to enable folding for tests, hooks and test cases. Turning **Tests** off also turns **Test cases** off and disables that checkbox. Turning **Tests** back on makes the checkbox available again; test cases stay off until selected. Turning a category off keeps its code visible and removes its inline folding controls. With **Test cases** off, the original `.each(...)` declaration stays visible, and the callback body can still be folded. All categories start enabled; newly enabled categories start collapsed. Preferences are saved and apply to open tabs and newly loaded blocks. Individual fold controls and the bulk toggle can still override the current view. Click outside the popup to close it. No floating bar covers the PR. The on/off preference is saved locally and synchronized across open GitHub tabs. Individual choices are kept while this page remains open and reset when switching PR routes or refreshing.
 
 ## Supported behavior
 
@@ -29,7 +29,7 @@ This first version folds only complete tests present in loaded, contiguous diff 
 
 Supports classic `.blob-code` diffs and the React `/changes` viewer’s `.diff-text-cell` structure. Version 0.2.0 was verified in Chrome against a private PR: ten test controls were detected; toolbar-popup expansion, collapse and on/off controls worked. The floating bar was absent. Only complete tests currently present in the DOM are eligible; loading or scrolling to more code triggers a rescan. It does not replace GitHub's viewer or fetch full file source.
 
-Folded split-view cells can leave blank space where the opposite side has visible changes. Review comments remain on screen, but their associated code may need manual expansion. Parameterized `.each([...])` tests show the description first, with separate **N test cases** and **Test implementation** controls. Both start collapsed and participate in the popup bulk toggle. Expanding cases reveals only the input array, without the `.each` wrapper or callback; expanding implementation replaces the compact view with the full original test code. **Collapse test** returns to the compact summary with both cases and implementation collapsed. Literal arrays provide the case count; variable tables and spreads show **Test cases** without guessing a count. Runtime-generated cases are not evaluated.
+Folded split-view cells can leave blank space where the opposite side has visible changes. Review comments remain on screen, but their associated code may need manual expansion. Parameterized `.each([...])` tests show the description first, with separate **N test cases** and **Expand tests** controls. Both start collapsed and participate in the popup bulk toggle. Expanding cases reveals only the input array, without the `.each` wrapper or callback; expanding implementation shows the full original test code beneath a stable description and controls. The header stays visible in both states. **Collapse test** returns to the compact summary with both cases and implementation collapsed. Literal arrays provide the case count; variable tables and spreads show **Test cases** without guessing a count. Runtime-generated cases are not evaluated.
 
 ## Files and privacy
 
@@ -58,3 +58,12 @@ npm run test:watch
 The suite uses Node’s built-in test runner. `tests/detector.test.cjs` runs the real bundled parser and detector against test declarations, modifiers, TypeScript/JSX, multiline headers and missing diff context. `tests/popup.test.cjs` runs the real popup event handlers with fake DOM elements and Chrome APIs, checking the single expand/collapse button, saved on/off preference and unavailable-page states.
 
 These are local unit tests. They do not launch Chrome or verify GitHub’s live diff markup; check that separately in the installed extension after changing `content.js` selectors or folding behavior.
+
+
+## Stable toggling
+
+Individual toggles reuse parsed diff ranges and update the clicked test’s controls, preserving controls on other tests and keyboard focus. The clicked control’s screen position is preserved by correcting its nearest scrolling pane after the layout changes. Bulk expand/collapse anchors the test control nearest the top of the visible page. GitHub-driven diff changes still trigger a source rescan.
+
+The local suite includes DOM-fixture regression tests for individual/bulk toggles and parameterized cases, plus scroll-anchor tests for window and nested-pane scrolling. Browser scroll limits can prevent exact position preservation near the end of a document; live GitHub layout behavior should still be checked in Chrome.
+
+Only parameterized `.each` tests use stable summary headers. Ordinary tests and hooks use inline controls beside their original declarations; their button elements are retained while toggling. For parameterized tests, case inputs appear below both controls so opening cases does not move the implementation button.

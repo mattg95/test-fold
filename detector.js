@@ -18,6 +18,23 @@
     return callee.type === 'MemberExpression' && !callee.computed &&
       ['test', 'it'].includes(root(callee.object)) && hooks.has(callee.property.name);
   }
+  // Remove repository indentation from the cases preview. Keep raw source
+  // separately for the full diff; avoid changing multiline template contents.
+  function formatCases(source) {
+    if (!source.includes('\n') || source.includes('`')) return source;
+    const lines = source.split('\n');
+    const nonempty = lines.slice(1).filter(line => line.trim());
+    const margin = Math.min(...nonempty.map(line => line.match(/^[ \t]*/)[0].length));
+    const dedented = lines.map((line, i) => i ? line.slice(Math.min(margin, line.match(/^[ \t]*/)[0].length)) : line);
+    const widths = dedented.slice(1).filter(line => line.trim()).map(line => line.match(/^[ \t]*/)[0].replace(/\t/g, '  ').length).filter(Boolean);
+    const step = widths.length ? Math.min(...widths) : 2;
+    return dedented.map((line, i) => {
+      if (!i) return line;
+      const prefix = line.match(/^[ \t]*/)[0];
+      const width = prefix.replace(/\t/g, '  ').length;
+      return ' '.repeat(Math.round(width / step) * 2) + line.slice(prefix.length);
+    }).join('\n');
+  }
   // Extract .each metadata from syntax only; never evaluate test data or titles.
   function eachDetails(call, source) {
     const factory = call.callee;
@@ -38,7 +55,8 @@
       removedPlaceholder = true;
       return '';
     }).replace(/[ \t]{2,}/g, ' ').trim();
-    return {title: removedPlaceholder ? title.replace(/:\s*$/, '').trim() : title, count, casesSource: data ? source.slice(data.start, data.end) : ''};
+    const casesSource = data ? source.slice(data.start, data.end) : '';
+    return {title: removedPlaceholder ? title.replace(/:\s*$/, '').trim() : title, count, casesSource, casesDisplay: formatCases(casesSource)};
   }
   function detect(lines) {
     const ranges = [];
@@ -78,7 +96,10 @@
         const end = i + callback.body.loc.end.line - 1;
         // Hide only whole interior lines. Keep header and closing syntax intact.
         if (end > start) {
-          const range = {kind, header: i, start, end, description: source.split('\n').slice(0, callback.body.loc.start.line).join('\n').trim()};
+          const titleArg = call.arguments[0];
+          const title = kind === 'hook' ? source.slice(call.callee.start, call.callee.end) :
+            titleArg?.type === 'StringLiteral' ? titleArg.value : source.slice(titleArg?.start ?? call.start, titleArg?.end ?? call.callee.end);
+          const range = {title, closingEnd: i + call.loc.end.line, kind, header: i, start, end, description: source.split('\n').slice(0, callback.body.loc.start.line).join('\n').trim()};
           const each = kind === 'test' ? eachDetails(call, source) : null;
           if (each) {
             range.each = each;

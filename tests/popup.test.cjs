@@ -8,7 +8,7 @@ const source = readFileSync(resolve(__dirname, '..', 'popup.js'), 'utf8');
 // Minimal browser boundary: actual popup event handlers run unchanged. Chrome
 // storage, messaging and DOM elements are fakes, so no browser/install is needed.
 async function openPopup({page = {}, missingReceiver = false, noTab = false} = {}) {
-  const elements = Object.fromEntries(['enabled', 'fold-toggle', 'status'].map(id => [id, {
+  const elements = Object.fromEntries(['enabled', 'fold-toggle', 'status', 'foldTests', 'foldHooks', 'foldCases'].map(id => [id, {
     checked: false, disabled: false, textContent: '',
     handlers: {}, addEventListener(event, handler) { this.handlers[event] = handler; },
   }]));
@@ -45,7 +45,8 @@ test('offers Expand tests when the diff is collapsed or mixed', async () => {
   assert.equal(elements['fold-toggle'].textContent, 'Expand tests');
   assert.equal(elements['fold-toggle'].disabled, false);
   assert.equal(messages[0].action, 'status');
-  assert.match(elements.status.textContent, /3 test and hook controls/);
+  assert.equal(elements.status.textContent, '');
+  assert.equal(elements.status.hidden, true);
 });
 
 test('toggles one button from expand to collapse and back', async () => {
@@ -79,7 +80,7 @@ test('on/off toggle persists the preference and updates the active page', async 
 
 for (const [name, options, expected] of [
   ['disabled extension', {page: {enabled: false}}, /off/],
-  ['empty diff', {page: {detected: 0}}, /No complete tests or hooks/],
+  ['empty diff', {page: {detected: 0}}, /No folding controls/],
   ['non-PR tab', {page: {isPR: false}}, /Files changed/],
   ['missing content script', {missingReceiver: true}, /refresh the tab/],
   ['no active tab', {noTab: true}, /Open a GitHub PR diff/],
@@ -91,3 +92,31 @@ for (const [name, options, expected] of [
     assert.match(elements.status.textContent, expected);
   });
 }
+
+
+for (const key of ['foldHooks', 'foldCases']) {
+  test(`saves and applies the ${key} folding setting independently`, async () => {
+    const {elements, messages, writes} = await openPopup();
+    assert.equal(elements[key].checked, true);
+    elements[key].checked = false;
+    await elements[key].handlers.change();
+    assert.deepEqual(writes, [{[key]: false}]);
+    assert.equal(messages.at(-1).action, 'set-settings');
+    assert.deepEqual(messages.at(-1).settings, {[key]: false});
+  });
+}
+
+
+test('disabling tests switches off and disables test cases', async () => {
+  const {elements, writes, messages} = await openPopup();
+  elements.foldTests.checked = false;
+  await elements.foldTests.handlers.change();
+  assert.equal(elements.foldCases.checked, false);
+  assert.equal(elements.foldCases.disabled, true);
+  assert.deepEqual(writes.at(-1), {foldTests: false, foldCases: false});
+  assert.deepEqual(messages.at(-1).settings, {foldTests: false, foldCases: false});
+  elements.foldTests.checked = true;
+  await elements.foldTests.handlers.change();
+  assert.equal(elements.foldCases.disabled, false);
+  assert.equal(elements.foldCases.checked, false);
+});

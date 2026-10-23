@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Test Fold for GitHub",
-  "version": "0.3.5",
+  "version": "0.6.4",
   "description": "Keep test descriptions visible and expand their bodies in GitHub pull request diffs.",
   "permissions": [
     "storage"
@@ -14,6 +14,8 @@
       "js": [
         "vendor/parser.js",
         "detector.js",
+        "policy.js",
+        "viewport.js",
         "content.js"
       ],
       "css": [
