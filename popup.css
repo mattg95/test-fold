@@ -1,0 +1,11 @@
+/* The controls live in Chrome's popup, so they never cover the PR. */
+:root { color-scheme: light dark; font: 14px system-ui, sans-serif; }
+body { width: 280px; margin: 0; padding: 18px; background: light-dark(#fff, #161b22); color: light-dark(#1f2328, #e6edf3); }
+h1 { margin: 0 0 18px; font-size: 18px; }
+.toggle { display: flex; justify-content: space-between; align-items: center; gap: 16px; cursor: pointer; }
+input { accent-color: #238636; width: 18px; height: 18px; }
+.actions { display: flex; gap: 8px; margin-top: 18px; }
+button { flex: 1; padding: 9px 8px; border: 1px solid light-dark(#d1d9e0, #3d444d); border-radius: 6px; background: light-dark(#f6f8fa, #212830); color: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid #4493f8; outline-offset: 3px; }
+p { margin: 14px 0 0; font-size: 12px; color: light-dark(#59636e, #9198a1); }

@@ -9,23 +9,17 @@
   // classic and React table-based diffs; unsupported renderers are left untouched.
   const fileSelector = '.file, [data-file-path], [data-testid="diff-file"], table[data-diff-anchor]';
   const codeSelector = '.blob-code, [data-testid="diff-line-code"], td.diff-text-cell[data-line-number]';
-  // Build the floating controls once, then reuse them after each rescan.
-  const toolbar = document.createElement('div');
-  toolbar.id = 'test-fold-toolbar';
-  toolbar.setAttribute('aria-label', 'Test Fold controls');
-  // Native buttons provide keyboard activation and accessible labels.
+  // The browser-action popup asks for status and sends bulk commands by message.
+  // Inline disclosure buttons remain part of the diff; no floating bar is injected.
+  let detected = 0;
   function button(label, action) {
     const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
-    b.addEventListener('click', action); return b;
+    b.addEventListener('click', event => { event.stopPropagation(); action(); });
+    return b;
   }
-  const toggle = button('Test Fold: on', () => {
-    enabled = !enabled; chrome.storage.local.set({enabled}); schedule();
-  });
-  const status = document.createElement('span');
-  status.setAttribute('role', 'status');
-  const expandAll = button('Expand tests', () => setAll(true));
-  const collapseAll = button('Collapse tests', () => setAll(false));
-  toolbar.append(toggle, expandAll, collapseAll, status);
+  function pageStatus() {
+    return {enabled, detected, isPR: /\/pull\/\d+\/(?:files|changes)(?:\/|$)/.test(location.pathname)};
+  }
   // Bulk actions affect tests discovered so far. Newly loaded tests start collapsed.
   function setAll(value) { for (const key of states.keys()) states.set(key, value); schedule(); }
   // Debounce bursts of GitHub DOM updates into one scan.
@@ -66,12 +60,8 @@
       // GitHub can navigate without reloading. Reset test choices on route changes.
       if (route !== location.pathname) { states.clear(); route = location.pathname; }
       cleanup();
-      const isPR = /\/pull\/\d+\/(?:files|changes)(?:\/|$)/.test(location.pathname);
-      toolbar.hidden = !isPR;
-      if (!toolbar.isConnected) document.body.append(toolbar);
-      toggle.textContent = `Test Fold: ${enabled ? 'on' : 'off'}`;
-      expandAll.disabled = collapseAll.disabled = !enabled;
-      status.textContent = enabled ? 'Scanning…' : 'Folding is off';
+      const {isPR} = pageStatus();
+      detected = 0;
       if (!enabled || !isPR) return;
       // Process only outermost file containers to avoid scanning nested matches twice.
       const files = [...document.querySelectorAll(fileSelector)].filter(f => !f.parentElement.closest(fileSelector));
@@ -143,9 +133,7 @@
           if (code.length && code.every(c => c.classList.contains('tf-hidden') || !c.textContent.trim()) && !row.querySelector('.review-comment, .js-inline-comments-container, [data-testid*="comment"]')) row.classList.add('tf-row-hidden');
         }
       }
-      status.textContent = found ? `${found} test controls` : 'No complete tests detected';
-      expandAll.disabled = collapseAll.disabled = found === 0;
-      toolbar.title = found ? `${found} test ranges detected` : 'No complete supported test blocks found in the loaded diff. Expand GitHub’s hidden context if the test is incomplete.';
+      detected = found;
     } finally {
       applying = false;
       observer.observe(document.body, {childList: true, subtree: true});
@@ -155,6 +143,25 @@
   // preference before the initial scan to avoid briefly folding when disabled.
   const observer = new MutationObserver(schedule);
   chrome.storage.local.get({enabled: true}, value => { enabled = value.enabled; apply(); });
+  // Synchronize the global preference across already-open GitHub tabs.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.enabled) {
+      enabled = changes.enabled.newValue !== false;
+      schedule();
+    }
+  });
+  chrome.runtime.onMessage.addListener((message, sender, respond) => {
+    if (message?.type !== 'test-fold') return;
+    if (message.action === 'set-enabled') enabled = message.enabled === true;
+    if (message.action === 'expand' || message.action === 'collapse') {
+      // Scan first so a just-loaded file participates in the bulk action.
+      apply();
+      setAll(message.action === 'expand');
+    }
+    clearTimeout(timer);
+    apply();
+    respond(pageStatus());
+  });
   window.addEventListener('popstate', schedule);
   document.addEventListener('turbo:load', schedule);
 })();
