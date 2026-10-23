@@ -95,7 +95,7 @@ test('includes hooks and tests in one collection for bulk folding', () => {
 // Case counts come from syntax, and placeholders are removed only from the compact display.
 test('summarizes a multiline each table by description and case count', () => {
   const [range] = detect("it.each([\n  { locationId: -1 },\n  { cursor: 'no' },\n])('rejects invalid query values: %j', async (input) => {\n  await validate(input);\n});");
-  assert.deepEqual(range.each, {title: 'rejects invalid query values', count: 2});
+  assert.deepEqual(range.each, {title: 'rejects invalid query values', count: 2, casesSource: "[\n  { locationId: -1 },\n  { cursor: 'no' },\n]"});
   assert.equal(range.header, 0);
   assert.equal(range.start, 4);
   assert.equal(range.end, 5);
@@ -103,7 +103,7 @@ test('summarizes a multiline each table by description and case count', () => {
 
 test('counts TypeScript constant arrays in parameterized tests', () => {
   const [range] = detect("test.each(['start', 'end'] as const)('requires %s', field => {\n  validate(field);\n});");
-  assert.deepEqual(range.each, {title: 'requires', count: 2});
+  assert.deepEqual(range.each, {title: 'requires', count: 2, casesSource: "['start', 'end']"});
 });
 
 for (const table of ['cases', '[...cases]', '[makeCase()]']) {
@@ -128,4 +128,12 @@ test('removes runtime placeholders from summaries while preserving original code
 test('keeps literal percentages in parameterized descriptions', () => {
   const [range] = detect("it.each([1])('supports 100%% coverage for %s', input => {\n  validate(input);\n});");
   assert.equal(range.each.title, 'supports 100% coverage for');
+});
+
+
+test('expanded cases contain only the input array, excluding call and implementation', () => {
+  const [range] = detect("it.each([\n  { limit: 0 },\n  { cursor: 'no' },\n])('rejects %j', async input => {\n  await request(input);\n});");
+  assert.equal(range.each.casesSource, "[\n  { limit: 0 },\n  { cursor: 'no' },\n]");
+  assert.doesNotMatch(range.each.casesSource, /it\.each|rejects|async|request/);
+  assert.equal(range.closingEnd, 6);
 });

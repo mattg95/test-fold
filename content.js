@@ -110,16 +110,20 @@
             if (!states.has(key)) states.set(key, false);
             const expanded = states.get(key);
             const b = button(`${expanded ? '▾' : '▸'} ${expanded ? (range.kind === 'hook' ? 'Collapse hook' : 'Collapse test') : `${range.end - range.start} lines`}`, () => {
-              states.set(key, !states.get(key)); schedule();
+              const nextExpanded = !states.get(key);
+              states.set(key, nextExpanded);
+              // Collapsing the full test also resets its independently opened cases.
+              if (range.each && !nextExpanded) states.set(`${key}:cases`, false);
+              schedule();
             });
             b.className = 'tf-fold'; b.setAttribute('aria-expanded', String(expanded));
             b.title = range.description;
             // Shared context headers need only one control for the same test.
             if (![...header.inner.querySelectorAll('.tf-fold')].some(n => n.dataset.key === key)) {
               b.dataset.key = key;
-              if (range.each) {
-                // Keep the original declaration in place, with a compact summary
-                // above it. Cases and callback body have independent saved states.
+              if (range.each && !expanded) {
+                // Only collapsed implementations use the compact summary. When
+                // expanded, the standard disclosure button exposes original code.
                 const casesKey = `${key}:cases`;
                 if (!states.has(casesKey)) states.set(casesKey, false);
                 const casesExpanded = states.get(casesKey);
@@ -139,16 +143,27 @@
                 casesButton.dataset.key = casesKey;
                 casesButton.setAttribute('aria-expanded', String(casesExpanded));
                 b.textContent = `${expanded ? '▾' : '▸'} ${expanded ? 'Collapse test' : 'Test implementation'}`;
-                ui.append(title, casesButton, b); header.inner.prepend(ui); found += 2;
+                // Render only the parsed input expression, never the .each call
+                // wrapper or callback. textContent keeps source text inert.
+                const casesCode = document.createElement('pre'); casesCode.className = 'tf-each-cases';
+                casesCode.textContent = range.each.casesSource; casesCode.hidden = !casesExpanded;
+                ui.append(title, casesButton, casesCode, b); header.inner.prepend(ui); found += 2;
               } else { header.inner.prepend(b); found++; }
             }
-            // Hide multiline .each input tables independently of implementation.
-            if (range.each && !states.get(`${key}:cases`)) {
+            // Cases alone reveal only their array. Expanding implementation
+            // instead restores every original line, including the .each wrapper.
+            if (range.each && !expanded) {
               for (let k = range.header + 1; k < range.start; k++) {
                 const cell = lines[k].cell;
                 if (!hidden.has(cell)) hidden.set(cell, new Set());
                 hidden.get(cell).add(side);
               }
+            }
+            // The callback/call closing syntax belongs to the hidden wrapper.
+            if (range.each && !expanded) for (let k = range.end; k < range.closingEnd; k++) {
+              const cell = lines[k].cell;
+              if (!hidden.has(cell)) hidden.set(cell, new Set());
+              hidden.get(cell).add(side);
             }
             if (!expanded) for (let k = range.start; k < range.end; k++) {
               const cell = lines[k].cell;
@@ -159,10 +174,13 @@
         }
         // Hide shared cells only when every side that uses them is folded.
         // This keeps an expanded side visible in a unified diff.
-        // Shared unified headers stay readable if either side's cases are open.
+        // Original headers are restored by cleanup when folding is disabled.
         for (const original of file.querySelectorAll('.tf-each-source')) {
-          const controls = [...original.parentElement.querySelectorAll('.tf-cases')];
-          original.classList.toggle('tf-each-source-hidden', controls.every(b => b.getAttribute('aria-expanded') === 'false'));
+          // Unified headers can be shared by both versions. An expanded
+          // original-code control takes precedence over the compact view.
+          const expandedControl = [...original.parentElement.children].some(n => n.classList.contains('tf-fold') && n.getAttribute('aria-expanded') === 'true');
+          original.classList.toggle('tf-each-source-hidden', !expandedControl);
+          if (expandedControl) original.parentElement.querySelectorAll('.tf-each-ui').forEach(n => n.remove());
         }
         for (const [cell, sides] of present) {
           if ([...sides].every(side => hidden.get(cell)?.has(side))) cell.classList.add('tf-hidden');

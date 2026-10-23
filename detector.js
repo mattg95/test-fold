@@ -38,7 +38,7 @@
       removedPlaceholder = true;
       return '';
     }).replace(/[ \t]{2,}/g, ' ').trim();
-    return {title: removedPlaceholder ? title.replace(/:\s*$/, '').trim() : title, count};
+    return {title: removedPlaceholder ? title.replace(/:\s*$/, '').trim() : title, count, casesSource: data ? source.slice(data.start, data.end) : ''};
   }
   function detect(lines) {
     const ranges = [];
@@ -80,7 +80,10 @@
         if (end > start) {
           const range = {kind, header: i, start, end, description: source.split('\n').slice(0, callback.body.loc.start.line).join('\n').trim()};
           const each = kind === 'test' ? eachDetails(call, source) : null;
-          if (each) range.each = each;
+          if (each) {
+            range.each = each;
+            range.closingEnd = i + call.loc.end.line;
+          }
           ranges.push(range);
         }
         // Skip the recognized block so nested calls are not treated as separate tests.
