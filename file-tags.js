@@ -15,7 +15,7 @@ globalThis.TestFoldFileTags = path => {
   else if (/(^|\/)(\.github\/workflows|\.circleci|scripts)\//.test(p) || /^(jenkinsfile|makefile|\.gitlab-ci\.yml)$/.test(name)) primary = 'Automation';
   else if (/\.d\.ts$|(^|\.)(types|interfaces?|dto)\.tsx?$/.test(name) || /(^|\/)(types|interfaces|dtos?)\//.test(p)) primary = 'Interfaces';
   else if (/(^|\/)(validators?|validation|schemas?)\//.test(p) || /\.(schema|validator)\.[^.]+$/.test(name)) primary = 'Validation';
-  else if (/^index\.[cm]?[jt]s$|\.module\.[jt]s$/.test(name)) primary = 'Wiring';
+  else if (/^register\.ts$|^index\.[cm]?[jt]s$|\.module\.[jt]s$/.test(name)) primary = 'Wiring';
   else if (/\.(md|mdx|rst)$/.test(name) || /(^|\/)(docs|documentation)\//.test(p)) primary = 'Docs';
   else if (/\.(png|jpe?g|gif|webp|svg|ico|woff2?|ttf|mp[34]|wav|pdf)$/.test(name) || /(^|\/)assets\//.test(p)) primary = 'Assets';
   else if (/\.(tsx|jsx|css|scss|sass|less|vue|svelte|blade\.php)$/.test(name) || /(^|\/)(components|screens|views|templates)\//.test(p)) primary = 'UI';
