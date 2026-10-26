@@ -81,7 +81,7 @@ GitHub's PR file tree shows badges immediately beside filenames. Tests are yello
 
 Rules live in `file-tags.js` and use filename/path conventions. Generated may accompany a primary tag. Unknown files stay untagged. Wiring currently identifies conventional `index.js`/`index.ts` barrels, `register.ts` files and module registration filenames by name; it does not inspect their contents. GitHub's React sidebar is supported; folder roll-ups and repository-specific overrides are not included.
 
-The Interfaces tag covers `*.interface.ts`, `*.interfaces.ts`, `*.types.ts`, `*.d.ts`, `*.dto.ts`, and files in `types/`, `interfaces/`, `dto/` or `dtos/` directories.
+The Interfaces tag covers `*.contract`, `*.contract.*`, as well as `*.interface.ts`, `*.interfaces.ts`, `*.types.ts`, `*.d.ts`, `*.dto.ts`, and files in `types/`, `interfaces/`, `dto/` or `dtos/` directories.
 
 Config covers `config.ts`, `configs.ts`, `*.config.ts`, `.env`, `.env.*` and `*.env`. ZIP files are not classified as Assets based on their extension. Files in `yarn/.cache/` receive only Generated. Files in `.yarn/cache/` use the normal filename rules; ZIP files there remain untagged unless another rule matches.
 

@@ -13,7 +13,7 @@ globalThis.TestFoldFileTags = path => {
   else if (/^(package\.json|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|composer\.(json|lock)|pyproject\.toml|poetry\.lock|uv\.lock|requirements.*\.txt|pipfile(?:\.lock)?)$/.test(name)) primary = 'Dependencies';
   else if (/\.(tf|tfvars)(\.json)?$/.test(name) || /(^|\/)(terraform|cloudformation|cdk|k8s|kubernetes|helm)\//.test(p) || /^(dockerfile(?:\..*)?|docker-compose.*\.ya?ml|compose\.ya?ml|cdk\.json|samconfig\.toml|\.terraform\.lock\.hcl)$/.test(name)) primary = 'Infra';
   else if (/(^|\/)(\.github\/workflows|\.circleci|scripts)\//.test(p) || /^(jenkinsfile|makefile|\.gitlab-ci\.yml)$/.test(name)) primary = 'Automation';
-  else if (/\.d\.ts$|(^|\.)(types|interfaces?|dto)\.tsx?$/.test(name) || /(^|\/)(types|interfaces|dtos?)\//.test(p)) primary = 'Interfaces';
+  else if (/\.contract(?:\.[^.]+)?$|\.d\.ts$|(^|\.)(types|interfaces?|dto)\.tsx?$/.test(name) || /(^|\/)(types|interfaces|dtos?)\//.test(p)) primary = 'Interfaces';
   else if (/(^|\/)(validators?|validation|schemas?)\//.test(p) || /\.(schema|validator)\.[^.]+$/.test(name)) primary = 'Validation';
   else if (/^register\.ts$|^index\.[cm]?[jt]s$|\.module\.[jt]s$/.test(name)) primary = 'Wiring';
   else if (/\.(md|mdx|rst)$/.test(name) || /(^|\/)(docs|documentation)\//.test(p)) primary = 'Docs';
