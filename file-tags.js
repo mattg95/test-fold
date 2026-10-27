@@ -6,7 +6,9 @@ globalThis.TestFoldFileTags = path => {
   if (/(^|\/)yarn\/\.cache\//.test(p)) return ['Generated'];
   let primary = null;
   const generated = /(^|\/)(generated|__generated__|dist|build)\//.test(p) || /(?:\.gen\.|\.generated\.|\.min\.)/.test(name) || /^(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|composer\.lock|poetry\.lock|uv\.lock|\.terraform\.lock\.hcl)$/.test(name);
-  if (/(^|\/)(__tests__|tests?|e2e|specs?)\//.test(p) || /\.(test|spec|e2e-spec)\.[^.]+$|_test\.py$|^test_.*\.py$|test\.php$/.test(name)) primary = 'Tests';
+  // README files describe their directory, regardless of its classification.
+  if (name === 'readme.md') primary = 'Docs';
+  else if (/(^|\/)(__tests__|tests?|e2e|specs?)\//.test(p) || /\.(test|spec|e2e-spec)\.[^.]+$|_test\.py$|^test_.*\.py$|test\.php$/.test(name)) primary = 'Tests';
   // Explicit config filenames take priority over broad directory classifications.
   else if (/^configs\.ts$|config\.[^.]+$|^tsconfig.*\.json$|^\.(eslint|prettier|babel)|^\.env(?:\..*)?$|\.env$|\.ini$/.test(name)) primary = 'Config';
   else if (/(^|\/)(migrations|alembic\/versions)\//.test(p) || /\.migration\.[^.]+$/.test(name)) primary = 'Migrations';

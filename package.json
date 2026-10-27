@@ -1,6 +1,6 @@
 {
   "name": "test-fold",
-  "version": "0.8.32",
+  "version": "0.8.33",
   "private": true,
   "description": "Local tests for the Github Fold Chrome extension",
   "scripts": {
